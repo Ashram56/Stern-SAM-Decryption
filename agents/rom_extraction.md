@@ -54,8 +54,11 @@ something that would change how another SAM ROM is taken apart (a new method, a 
 mistake and its fix, a correction to this file), fold it in here in the same session (a PR on
 Ashram56/Stern-SAM-Decryption), in the generic section it belongs to, with that game's value as the worked
 example. Facts of one game only (its addresses, status, raw notes) stay in that game's asset repo. Last
-updated 2026-10-10 (moved here from Tron-Legacy-LE-ROM-Decryption `AGENTS.md`; content unchanged since
-2026-10-08: pipeline placement, owner inputs, per-frame text, PinMAME numbering, coin door and service suspend).
+updated 2026-10-10 (second game: Transformers Pro 1.80, `tf_180`, asset repo
+[Transformers-MPF `rom/`](https://github.com/Ashram56/Transformers-MPF/tree/claude/rom-extraction-uayj13/rom):
+the OS shared with Tron, the table registry, text helpers and printf arguments, score and sound hooking
+pitfalls, carried-over names, capture regressions; moved here from Tron-Legacy-LE-ROM-Decryption `AGENTS.md`
+the same day).
 
 ---
 
@@ -121,6 +124,16 @@ updated 2026-10-10 (moved here from Tron-Legacy-LE-ROM-Decryption `AGENTS.md`; c
     that uses it before publishing a register map.
 19. **Model and region checks: document, don't defeat.** ROMs carry hardware/software mismatch and
     country-lock checks. Note that they exist and where; do not analyse how to bypass them.
+20. **Never trust a name carried over from another game.** Names ported from Tron's decompile onto
+    Transformers functions at matching addresses or signatures were wrong more than once: deff/leff
+    functions got Tron effect names (`deff_093_zuse...`), and `any_timed_mode_running` (TF `0x01006704`)
+    actually ORs the six multiball flags; the real timed-mode test is a different function (`0x010067bc`).
+    Seven rules specs had to be corrected after the MPF build caught it. Rename table functions from the new
+    ROM's own tables, and re-derive every ported name a spec relies on from its body before citing it.
+21. **Diff a re-capture against the last one before replacing it.** A full re-run of the display-effect
+    captures on Transformers (33 effects per emulator run) came back empty for 25 effects that had rendered
+    before; re-running them 4 per run recovered 21. Compare pages and frames per effect, merge per effect
+    (keep the better capture), and say which effects kept the older one.
 
 ---
 
@@ -166,7 +179,10 @@ offset is `(p >> 24) * 0x800000 + (p & 0xffffff)`. That formula decodes both ima
 at `0x2fa00`, so its RAM block starts there and every RAM address moves. Read the reset code: it copies
 the OS into the AT91's internal SRAM (Tron LE: copy loop `0x84-0xc4`, remap `0xe0`) and loads the chip
 selects from a table of EBI values (Tron `0x54`, code `0xd4`). Those two give you the real memory map;
-the full chip-select table is in section 8.2.
+the full chip-select table is in section 8.2. Transformers Pro 1.80: OS `0x0-0x34057` (copy loop at `0x84`),
+RAM from `0x34058`, game code file `0x40000` copied at `0x160` (0x6f090 bytes); the same layout otherwise.
+Unused RAM high in the block (TF `0x39400-0x3fc00`) makes a safe scratch stack and buffer for injected
+calls; check it stays zero through a game before using it.
 
 ---
 
@@ -211,6 +227,13 @@ the full chip-select table is in section 8.2.
   the sound buffer and every AT91 on-chip peripheral. `io/bus/tools/bus_trace.cpp` runs it
   (`BUSCAP_BOOT=1 PINMAME_NOJIT=1 ./bus_trace s_all.txt out.jsonl` logs power-on to 8 s, attract and a
   game). Emulator timing has no bus wait states, so check µs offsets against a hardware capture.
+- **Coil timing from the bus hook** (Transformers): a bus callback `PinmameSetBusHook(addr, data, mask,
+  write)` on the four solenoid registers (`SOL_B 0x02400021` = coils 1-8, `SOL_A 0x02400020` = 9-16,
+  `SOL_C 0x02400022` = 17-24, `FLSH_LMP 0x02400023` = 25-32, rewritten every 250 µs) times every activation
+  to 250 µs with no ROM-specific shadow address: first solid on time, whole activation, and hold duty after the
+  first pulse. TF result: flippers 40.5 ms then duty 0.083, pops 34 ms, slings 67-68 ms, kickers 64-65 ms.
+  Make sure the patch you apply carries the `src/cpu/arm7/*` hunks: they are what call the ARM hook, and a
+  patch without them builds cleanly and never calls it.
 
 ### 3.3 Unicorn for small isolated routines
 Running one light-effect function in `unicorn` with hooks on the tube API and on `task_sleep` (advance a
@@ -278,6 +301,8 @@ To start any display effect, lamp effect or formatter on demand, hijack the OS s
    task list (head RAM `0x372b0`, next at `+0x1c`, flags `+2`, id `+0x28`) and poke it after creation.
 
 The same trick stops effects (`pc = leff_stop`), runs formatters to get adjustment labels, and so on.
+It worked unchanged on Transformers (`task_sleep` `0xacfc`, task list head `0x314a0`, current task
+`0x314b0`, same task fields: deff id `+0x24`, flags `+2`, leff id `+0x28`, argument `+0x30`).
 
 ### Random numbers
 Tron's RNG is an LCG at RAM `0x372c4`: `x = x * 0x19660d + 1` (seed `0x04277dc9`), with
@@ -293,9 +318,13 @@ forcing method in every trace that depends on a random branch.
 
 On Tron the OS (0x0-0x36000) holds the framework and the game code calls into it. The full list of 160
 identified OS functions with signatures and evidence is [rules/work/os_api.json](../knowledge/sam_os_api.json).
-*(Tron only, untested elsewhere:)* other SAM games of the same OS generation likely share most of this
-code at different addresses. A good first move on a new ROM is to build byte signatures of Tron's OS
-functions (mask `BL` offsets and literal-pool loads) and search the new OS block for them.
+**Confirmed on a second game (Transformers Pro 1.80):** the OS is the same code at different addresses.
+Every adjustment, audit, pricing, country and service-menu function had the same body (TF `adj_get`
+`0x340` = Tron `0xe90`, `checksum16` `0x1c50` = `0x27a0`, `adj_visible` identical; the full map is in the TF
+asset repo's `rom_data/settings/README.md`), so Tron's settings extractor ported by swapping addresses. A
+good first move on a new ROM is to build byte signatures of Tron's OS functions (mask `BL` offsets and
+literal-pool loads) and search the new OS block for them. Game code is not shared: there, only the API
+calls carry over.
 
 ### 5.1 Core OS functions (Tron addresses) and how to find each
 
@@ -307,10 +336,10 @@ functions (mask `BL` offsets and literal-pool loads) and search the new OS block
 | `deff_start(id)` (display effect) | `0x280b0` | Called with small constants from switch handlers and modes; looks up an 8-byte table of `{fn, prio}`. |
 | `leff_start(id)` (lamp-matrix effect) | `0x87ac` | Same pattern, 12-byte table, spawns a task with flag `0x20`. |
 | `snd_play(call)` → `snd_resolve_call` → `snd_start_sample` | `0x2c8f4` → `0x2c744` → `0x2c1e4` | Insert a coin in the emulator and log calls with a small constant; or find the function that indexes a 20-byte table whose `+8` points to u16 lists. |
-| `score_add(points)` | `0x2340c` | Called from almost every switch handler with round decimal constants (10, 170, 440 ...), multiplies by a playfield multiplier byte. |
+| `score_add(points)` | `0x2340c` | Called from almost every switch handler with round decimal constants (10, 170, 440 ...), multiplies by a playfield multiplier byte. On Transformers `score_add` (`0x1caf0`) **tail-calls** `score_add_player(player, points)` (`0x1cb0c`): hooking both logged every award twice, which looked like a rules mismatch to the MPF build. Hook one entry only, and record the caller (`lr`) so awards can be tied to the code that gave them. |
 | `adj_get(id)` | `0xe90` | Small constants; result compared to ranges. Ids match the adjustment table order. |
 | `audit_add(id, n)` | `0x178c` | Small constants; each id matches an audit name like "DISC MULTIBALL STARTED". |
-| `msg_get(id)` and text drawing (`text_draw_msg`, `text_printf_msg`, `text_draw_msg_fit`) | `0xa58c`, `0x28ca8`, `0x28d5c`, `0x28e48` | Index the message table. **Include every text API** when extracting on-screen text; the first pass missed strings drawn with the "fit" variant. Text also reaches the renderer through vsprintf wrappers, font-picker functions, switch tables and function pointers, and some message ids are computed in registers (`mov r0,#imm` just before `0x28d5c`), so a grep of the decompile misses them. Hook the renderer in the emulator to be complete. |
+| `msg_get(id)` and text drawing (`text_draw_msg`, `text_printf_msg`, `text_draw_msg_fit`) | `0xa58c`, `0x28ca8`, `0x28d5c`, `0x28e48` | Index the message table. **Include every text API** when extracting on-screen text; the first pass missed strings drawn with the "fit" variant. Text also reaches the renderer through vsprintf wrappers, font-picker functions, switch tables and function pointers, and some message ids are computed in registers (`mov r0,#imm` just before `0x28d5c`), so a grep of the decompile misses them. Hook the renderer in the emulator to be complete. **Hook the text helpers as well, not only the low-level renderer:** that gives the message id or format string behind each drawn string, and its printf arguments. Transformers has seven helpers, four taking a message id (`0x21660` printf, `0x215ac`, `0x217b4` printf + fit, `0x2174c` fit) and three a string or format (`0x21838`, `0x21a78` printf, `0x21b4c` fit). Their varargs start on the stack after the fixed arguments: entry `sp+12` for the 7-argument printf helpers, `sp+16` for the 8-argument fit one (read the helper's prologue). 95 % of TF text draws got their format this way (`%,02lu`, `VOLUME %d`). A font operand that is a pointer is a **font list**: 0-terminated u32 font ids, tried in order; the fit renderer (TF `0x21b90`) takes the first whose width fits the width argument, or the 128-px screen for the alignment when the width is 0, and font 0 is the unchecked last resort. |
 | `random_below(n)` | `0xc6b4` | Multiplies `n` by an LCG state and keeps the high word; see "Random numbers" in section 4. |
 | `task_spawn_child` | `0xb840` | Child task with the current task's id; copies `task+0x30..0x47` (effect arguments) to the child. |
 | `lamp_rule_init` | `0x1982c` | Despite the old name, it registers **deff/sound rules**, not lamp rules (method `0x198a8` calls `deff_start` and `snd_play`). On a rules refresh the first true deff rule ends the walk, while every leff rule (`leff_rule_init` `0x19740`) is evaluated. |
@@ -319,7 +348,8 @@ functions (mask `BL` offsets and literal-pool loads) and search the new OS block
 | `game_flag_set/clear/test(flag)` | see decompile | Bit flags per player for mode state; very useful anchors. |
 | `error_log(code)` | `0x5ac8` | Non-fatal error ring; `fatal_halt` `0x5aa8` resets. Don't mistake `error_log` for a crash. |
 | RGB tube API (Tron-specific) | `0x7cc` set, `0x800` fade, `0x7a0` set_rgb | Console command strings (`lrlt`, `rrlt`) point straight at the handlers. |
-| `shaker_run(strength, min_setting)` | `0x10289b8` | Pulses/holds the shaker coil, gated by an adjustment. |
+| `shaker_run(strength, min_setting)` | `0x10289b8` | Pulses/holds the shaker coil, gated by an adjustment. Same API and the same 200 / 384 / 1024 ms table on Transformers (`0x010307a0`, table `0x040c7620`); there 52 of its 53 calls sit at the start of display effects, so a rebuild can attach the shaker to the deff. |
+| Delayed sound queue | TF `0x254b4` | Sounds played later from a slot list (TF: 8 slots at `0x38368`, each a call and a countdown). A sound logged with an OS caller and no deff was queued earlier by an effect: tie it to the effect that queued it, at its measured delay. |
 
 **Anchoring rules code in a new ROM:** the audit names are the best map. The function that bumps
 "DISC MULTIBALL STARTED" *is* the mode start; work outward from there. Display-effect text strings are
@@ -330,7 +360,10 @@ the second-best map.
 The game registers several of its tables with the OS through a **table of tables** in RAM (Tron
 `0x36ce4`; the deff table and the tube-show table are entries in it). Finding this block on a new ROM
 hands you most tables at once: look for the RAM block the deff-start function loads its table pointer
-from.
+from. On Transformers the OS keeps a fuller **table registry in the image** (file `0x30b00-0x30d10`): 43
+`(address, count, record size)` triples covering adjustments, audits, coils, deffs, leffs, lamps, lamp groups,
+messages, sound calls, switches, dedicated switches and more. Search the OS data for a run of triples whose
+addresses fall in `0x04000000-0x04800000`; on TF it gave every table at once.
 
 | Table | Tron address | Record | How to find |
 |---|---|---|---|
@@ -349,7 +382,7 @@ from.
 | Sound calls | `0x040f16b4` | 20 B; `+8` → 0-terminated u16 sample list, `+12` loop/marker index, `+18` speech flag | `snd_resolve_call`. Tron: 299 calls. |
 | Sample directory | file `0x120048` | 20 B per sample, points to a stream script | Referenced by `snd_start_sample`. |
 | Messages (strings) | `0x040eeb7c`, count at `0x040d0da0` | u32 ptr → ptr → C string (per language) | `msg_get`. |
-| Images | count RAM `0x36f4c`, table ptr RAM `0x36f50` | u32 `bank<<24 | offset` | `bitmap_draw` reads it. Tron: 8,181 images. |
+| Images | count RAM `0x36f4c`, table ptr RAM `0x36f50` | u32 `bank<<24 | offset` | `bitmap_draw` reads it. Tron: 8,181 images. The table index (the image number code draws) is **not** the `rid` in the image header; delta frames apply on the image whose header `rid` is one less, which may not be the previous index (TF: 10,212 images). |
 | Adjustments | `0x040de218`, count `0x040bd398` | 32 B: `nvram, default, min, max, step, ?, name ptr, display type` | Search for "BALLS PER GAME". Standard order list in RAM (Tron `0x39558`). |
 | Adjustment formatters | `0x040dd890` | fn, or u16 list of message ids | Run them in the emulator to get exact value labels (`fmt.cpp`). |
 | Audits | `0x040e022c` | 16 B; `w3 >> 16` = counter id | Search for "GAMES STARTED". |
@@ -393,6 +426,13 @@ leff and tube tables), and is the quickest way to start a table reader for a new
   length 1: they are channel-stop stubs, not audio.
 - Checking against the emulator's mixed audio output was inconclusive (music under everything). The
   ROM's own duration field was the reliable check.
+- *Stream scripts searched for in the wrong place* (Transformers). They sit at the very end of the file
+  (TF bank 3, `0x1d1a664`), so a search of the first 12 MB for stream pointers found nothing. Search the
+  whole image.
+- *Sound call ids parsed as decimal* (Transformers). The tracer printed calls with `%x`; the exporter read
+  them as decimal and mapped calls to the wrong sounds. Write and read call ids as hex strings everywhere.
+- *Every sound attributed to `snd_play`* (Transformers). Inside `snd_resolve_call`, `lr` points back into
+  `snd_play`; save `snd_play`'s own caller to know which code played a call.
 
 **Model for the rebuild:** the ROM never plays a sample directly. Code plays a **sound call**; the call
 picks one sample from its list (random start index, skipping recently played). In MPF that is one
@@ -445,6 +485,13 @@ always one contiguous image group (Tron fonts 27-32 are images 2175-2240).
   find it again by matching glyphs dot for dot (`scripts/frame_text.py` in the game repo: 50 captured
   effects); text that zooms or scatters (deff 100, ZEN) is drawn as blocks, not with a font. Better still,
   also save each capture once with the text calls suppressed.
+- **Background effects never get a forced end.** Close their capture window at the end of the log, or they
+  are silently dropped (TF: every background effect was missing from the first export). Give them at least 14 s per run; at 10 s three TF background
+  effects ended before they rendered.
+- **Save the text source with each draw** (helper, call site, message id or format, arguments; section
+  5.1) and a static list of every text call per effect from the decompile, so effects that print live values
+  or never render when forced still have their layout (TF: `deff_text_formats.csv`, 677 rows; 393 of 419
+  printf arguments resolved to a RAM address or getter, checked by poking RAM before the forced effect).
 
 **What forcing misses:**
 - Effects that check game state quit at once when forced (7 on Tron). Run long automated play
@@ -659,6 +706,14 @@ How the full rules came out (21 feature specs, about 60 reference traces):
    - **Which multiballs block or stack with which.**
    - Dead code and unreachable features, listed so nobody builds them.
 5. Mark every rule `(verified ...)`, from code (with the address), or `(inferred)`.
+6. **Check scaled values from the decompile against a trace.** Ghidra rendered some per-completion terms of
+   Transformers' battle scores as pointer arithmetic (`(int *)x + n`, so x + 4n): read literally they gave
+   6,250 instead of 25,000. Any multiplier read from pseudo-C goes in a spec only after a trace confirms it.
+7. **Per-player arrays are not all indexed alike.** Most are `[player-1]`, but TF's side byte is
+   `0x02112107 + player` and its bonus multiplier `0x02111cef[player]`. Check the index of each array in the
+   code that reads it.
+8. **Ball save hides drains.** A scenario that tests end of ball must wait out the ball save or turn it off;
+   otherwise the drain re-serves the ball and the trace shows no bonus.
 
 The project owner's correction is worth remembering: Flynn's Arcade, which code text suggested was a
 video mode, is a **mystery award**. Ask the owner when the domain knowledge is theirs.
@@ -743,6 +798,12 @@ video mode, is a **mystery award**. Ask the owner when the domain knowledge is t
 | Text left baked into the deff captures only | The HD rebuild matched glyphs dot for dot to clear and redraw it | Log text draws per captured frame (section 7) |
 | PinMAME's extra outputs not exported | The VPX bridge re-derived solenoid 33 (fast flips) and the tube lamps 101-106 from `sam.vbs` and PinMAME source | Export PinMAME numbers for every output (section 10) |
 | Coin door interlock and in-game service suspend not in the OS model | Found by the MPF build from the owner's play tests, after the rules were built | Export them with the OS model (section 8) |
+| Tron names left on Transformers functions (Transformers) | Effect functions named after Tron effects; "any timed mode" was "any multiball"; 7 specs wrong | Ground rule 20 |
+| Every score award logged twice (Transformers) | `score_add` tail-calls `score_add_player`; both hooked | Hook one entry (section 5.1) |
+| Sound calls parsed as decimal (Transformers) | Wrong sound per call in the effect exports | Hex strings everywhere (section 6) |
+| Background effects missing from the captures (Transformers) | They never get a forced end | Close the window at the end of the log (section 7) |
+| Full re-capture replaced the previous one (Transformers) | 25 effects empty in the new run | Diff and merge per effect (ground rule 21) |
+| Battle score terms read literally from Ghidra (Transformers) | Values 4x too small | Confirm scaled values with a trace (section 9) |
 
 ---
 

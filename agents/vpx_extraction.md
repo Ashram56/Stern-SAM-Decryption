@@ -44,8 +44,14 @@ The tools are in this repository's `tools/vpx/` (`pip install olefile pillow`; t
 
 ```
 python tools/vpx/vpx_extract.py TABLE.vpx OUT                       # any VPX 10.x table
-python tools/vpx/vpx_map.py OUT --names <switches.yaml> <lights.yaml> <coils.yaml> --mech <NUMBER:OBJECT,...>
+python tools/vpx/vpx_map.py OUT --names <switches.yaml> <lights.yaml> <coils.yaml> [<hardware.yaml>] \
+    --mech <NUMBER:OBJECT,...> --cabinet
 ```
+
+**Always pass `--cabinet`** (and the game's own hardware config to `--names` when it adds switches, such as a
+coin door switch numbered `D20`). Cabinet switches have no playfield object, so without it MPF Monitor shows no
+start, flipper or service buttons and the owner cannot press them (Transformers, 2026-10-10: the owner asked
+where they were).
 
 Then **open `overlay_small.png` and check that the markers sit on the inserts and targets** before calling it
 done. It is the only cheap check of the coordinates.
@@ -71,6 +77,28 @@ python tools/vpx/vpx_map.py out --names <Tron-Legacy-MPF>/assets/mpf_package/con
 - With `--names`, every device gets its config name. Tron's committed `game/monitor/monitor.yaml` came from this
   pipeline: 116 devices match it at the same position (median difference 0); the rest were moved by hand.
 
+### Checking a run (Transformers Pro values)
+
+Verified 2026-10-08 on `Transformers Pro (Stern 2011) v.2.4.vpx`, VR-Hybrid mod, ROM `tf_180`; outputs in
+Ashram56/Transformers-MPF `docs/vpx/`:
+
+```
+python tools/vpx/vpx_extract.py "Transformers Pro (Stern 2011) v.2.4.vpx" out
+python tools/vpx/vpx_map.py out --names <Transformers-MPF>/rom/mpf_package/config/{switches,lights,coils}.yaml \
+    <Transformers-MPF>/game/config/hardware.yaml --mech 43:opr,44:opr,42:kickermegatron --cabinet
+```
+
+- With the ROM extraction's config (`rom/mpf_package/config/` in the game repo) every placed device is named;
+  the ROM confirms 15/16 are the tournament/start buttons, lamps 1/2 their lamps, lamp 56 unused, 43/44
+  Optimus Prime up/down. The ROM's "slingshot left" flasher (26) is the table's right-side dome.
+- Bounds 0, 0, 952, 2164; playfield `pf` 3608x8192 (GameData IMAG); 386 images; 1,106 items; 31 collections;
+  `script.vbs` 4,891 lines; `switches_all.csv` 529 rows, `lights_all.csv` 251.
+- 43 playfield switches: 1-8, 10-14, 18-32, 34, 35, 37-46, 49-51 (trough 18-21 cvpmTrough at `BallRelease`,
+  Megatron lock 38-41 at `KickerMegaTron`, saucer 3, VPW standups 2/37/46/49/50, Optimus ramp 43/44 and
+  Megatron jam 42 by `--mech`), plus 19 on the cabinet strip: 15, 16, D1-D5, D9-D12, D17-D24.
+- 61 lamps (1-62 without 56; 1 and 2 below the playfield, moved to the strip), 12 flashers (17-21, 23, 25-28, 31, 32; six Flupper domes).
+- Before the collection filter, `vpmMapLights` turned 90 GI and flasher lights (TimerInterval 100) into a lamp 100.
+
 ## 4. The `.vpx` format (what `vpx_extract.py` relies on)
 
 - An **OLE compound file**. Streams: `GameStg/GameData` (table record and script), `GameStg/GameItemN` (one per
@@ -86,6 +114,9 @@ python tools/vpx/vpx_map.py out --names <Tron-Legacy-MPF>/assets/mpf_package/con
   nested: their `VCEN` must not overwrite the item's own; an item with no `VCEN`/`VPOS` uses their average.
   Position: `VCEN` (most), `VPOS` (primitives, targets), `FLAX`/`FLAY` (flashers). `HTEV` = has hit event;
   `TMIN` = timer interval (the lamp number on `vpmMapLights` tables). Wrap field parsing in `try/except struct.error`.
+- **Collection stream**: `NAME` then one `ITEM` per member (both UTF-16LE), `EVNT`, `SSNG`, `GREL`, `ENDB`.
+  `items.json` lists them under `collections`. `vpmMapLights AllLamps` maps only that collection's members:
+  GI bulbs and flasher lights also carry a TimerInterval (100 on Transformers) and must not become lamps.
 - **Strings**: item `NAME` is length-prefixed **UTF-16LE**; image names, paths, `IMAG`, `SURF` are **ANSI**.
   Some ANSI records hold binary data or a bad length: return `""` unless the text is printable ASCII (one of
   the two bugs fixed on the first real run).
@@ -105,23 +136,33 @@ that the patterns it uses are the ones `vpx_map.py` reads (comments are stripped
 
 | Device | Script pattern | Result |
 |---|---|---|
-| Switch | `Sub <obj>_Hit / _Spin / _Slingshot ... End Sub` (one-line subs too) containing `Controller.Switch(n) = 1` or `PulseSw n` | obj → n |
+| Switch | `Sub <obj>_Hit / _Spin / _Slingshot ... End Sub` (one-line subs too) containing `Controller.Switch(n) = 1`, `PulseSw n`, or VPW's `STHit n` / `DTHit n` | obj → n (mod 100) |
+| VPW targets | `(new StandupTarget)(obj, prim, n, ...)`, `(new DropTarget)(obj, objb, prim, n, ...)` | obj → n mod 100 |
 | Drop targets | `.InitDrop Array(objs), Array(nums)` | zipped pairwise |
 | Kickers, trough | `Set X = New cvpmBallStack` ... `.InitSw a,b,...` ... `.InitKick obj` | first slot is the entry switch, zeros dropped; one number left = the kick object; several = the trough, stacked at the kick object (`ny` + 0.006 per ball) |
+| Saucer | `.InitSaucer obj, n, ...` | obj → n |
+| Trough (cvpmTrough) | `Set X = New cvpmTrough` ... `.InitSwitches Array(a,b,...)` ... `.InitExit obj` | every number, stacked at the exit object |
 | Lamps | `Lampz.MassAssign(n) = obj` (several objects per lamp) | main object `l<n>`/`l0<n>`, else the first Light; others in `note` |
-| Lamps (older tables) | `vpmMapLights <collection>` | the Light's TimerInterval is its lamp number |
+| Lamps (older tables) | `vpmMapLights <collection>` | the Light's TimerInterval is its lamp number, members of that collection only |
 | Flashers | `ModLampz.MassAssign(n) = obj` | **solenoid** numbers |
+| Flashers | `SolModCallback(n)` / `SolCallback(n)` = `"vpmFlasher obj,"` (or `Array(...)`) | solenoid n → obj |
+| Flupper domes | `SolModCallback(n) = "<sub>"`, the sub calls `ModFlashFlasher k` / `FlashFlasher k` | solenoid n → `Flasherlight<k>` (else `Flasherflash<k>`, `Flasherbase<k>`) |
 
-Not handled yet (add them when a table uses them): `SolCallback(n)` objects for coils, `cvpmTrough`,
-`Controller.Switch(n)` set from a sub named after another object, GI strings (`GiCallback`; usually leave out).
+Not handled yet (add them when a table uses them): `SolCallback(n)` objects for coils,
+`Controller.Switch(n)` set from a sub named after another object or from a timer (Transformers' Optimus ramp
+43/44: use `--mech`), GI strings (`GiCallback`; usually leave out). Script comments next to `SolModCallback`
+can be wrong (Transformers' "Slingshot (Left)" dome sits on the right): trust the object, say so.
 
 **Mechanism switches have no object of their own**: pass them with `--mech NUMBER:OBJECT`, per table. Tron:
 52/53 (3-bank up/down) at `motorbank`, 54-56 (Recognizer position) at `recognizer`, 22 (trough jam) at
 `ballrelease`; each only if still unmapped.
 
 Expected gaps: the **trough** has no playfield objects (simulated ball stacks), so its switches sit stacked
-at the ball release; **cabinet buttons** (start, flippers, launch) are not on the playfield; some **lamp
-objects sit below the playfield** (apron, buttons): flag them; some manual lamp numbers have no object
+at the ball release; **cabinet switches** (start and tournament buttons, flipper buttons and EOS, launch, coin
+slots, tilt, slam tilt, coin door, the service buttons) have no object: `--cabinet` puts every config switch
+still unplaced on a strip along the picture's bottom edge (rows of 9 by number, y 0.985 upward), where the
+apron leaves room on SAM tables; some **lamp objects sit below the playfield** (apron, start buttons):
+`--cabinet` moves lamps off the picture to a row just above the strip; some manual lamp numbers have no object
 (`vpx_map.py` prints them). Cross-check numbers against the manual's matrix where you can.
 
 ## 6. MPF Monitor's `monitor.yaml`
@@ -133,8 +174,9 @@ objects sit below the playfield** (apron, buttons): flag them; some manual lamp 
 - **Names must be the machine config's** (`switches:`, `lights:`, `coils:` names), never VPX names:
   `--names` joins on the number. Without a config, placeholders `s_NN_<vpx>`, `l_NN_<vpx>`, `f_NN_<vpx>`
   carry the number for the recreation agent to rename.
-- Devices with no VPX object (flippers, autofires, ball devices, coils such as the drop target reset,
-  motors, coin door, ramp tubes) are added by hand near their parts (Tron did this once; they keep their
+- Switches with no VPX object go on the cabinet strip (`--cabinet`, section 5). Other devices with no VPX object
+  (flippers, autofires, ball devices, coils such as the drop target reset, motors, ramp tubes) are added by
+  hand near their parts (Tron did this once; they keep their
   place in the committed file).
 - Tron's monitor runs with `python scripts/run.py --monitor` (Tron's docs/hardware.md). Its `scripts/gen_monitor.py`
   draws a labelled grid instead and overwrites the layout: only for a game without a table.
@@ -142,7 +184,7 @@ objects sit below the playfield** (apron, buttons): flag them; some manual lamp 
 ## 7. Report
 
 Paths, counts, the playfield image name and size, the missing lamp numbers, which `--mech` placements you
-made, and the overlay verdict. List what needs the owner's eye as a short numbered list.
+made, what went on the cabinet strip, and the overlay verdict. List what needs the owner's eye as a short numbered list.
 
 ## History
 
@@ -153,8 +195,15 @@ made, and the overlay verdict. List what needs the owner's eye as a short number
 - 2026-10-08: rebuilt into the Tron game repo from those notes as `scripts/vpx_extract.py` and the generic
   `scripts/vpx_map.py` (Tron's hand-placed mechanisms became `--mech`, names from the config by number);
   reproduces the first run's counts exactly. `tests/test_vpx_extract.py`.
-
+- 2026-10-08: second table, Transformers Pro v2.4 (cloud, from the project's files). Added collections to
+  `items.json` and to `vpmMapLights`, cvpmTrough, `InitSaucer`, VPW `StandupTarget`/`DropTarget`/`STHit`/`DTHit`,
+  and `SolModCallback` flashers (vpmFlasher and Flupper domes). Not re-run on the Tron table (not in that
+  project): Tron uses `Lampz`/`ModLampz`, so only a `vpmFlasher` callback in its script could add rows.
+  Ported from Tron-Legacy-MPF PR #29 on 2026-10-10.
 - 2026-10-10: moved with this file to Stern-SAM-Decryption as `tools/vpx/`, the shared copy (the Tron game repo
   no longer carries them).
+
+- 2026-10-10: `--cabinet` (cabinet switches and off-picture lamps on a bottom strip) and `D<n>` numbers in
+  `--names`, after the Transformers owner found no start, flipper or service buttons in MPF Monitor.
 
 Last updated 2026-10-10.

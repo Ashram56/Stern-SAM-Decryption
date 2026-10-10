@@ -8,7 +8,7 @@ file paths in `code` are that repo's, use them as templates). Facts are tagged w
 
 ## 1. Inputs and target
 
-Inputs, from a ROM-decompilation repo (see `rom_decomp_feedback.md` for what it should contain):
+Inputs, from a ROM-decompilation repo (see [rom_extraction.md section 14](../agents/rom_extraction.md#14-deliverables-checklist-for-the-next-sam-game) for what it should contain):
 rules specs per mode, annotated decompiled C, an MPF config package (switches, coils, lights, settings,
 shows, sounds), DMD media (frames, timing, reference captures, `rom_images_all.zip`), IO tables,
 sound-call tables, and **reference traces**: scenario scripts replayed in an instrumented PinMAME,
@@ -155,6 +155,32 @@ for merges.
 - PinMAME numbering for VPX differs from the P-ROC: tube lamps 101-106, sol 33 = fast-flip toggle,
   negative dedicated switch numbers. VPX loads `<table>.vbs` beside the `.vpx` as a script override;
   never rewrite the `.vpx` (VPX checks its MAC).
+
+### SAM ball counting (multiball, lost balls) [SAM]
+- **Balls in play = installed - balls in devices**, recomputed on demand (`balls_in_play`, Tron 0x0001e4a8). A
+  ball held in a scoop or VUK is not in play. While the multiball task runs, it returns the task's requested
+  count instead. MPF's `game.balls_in_play` is event-driven (it counts launches and drains), so port the ROM
+  value as its own function (Tron `rom_balls_in_play`) and feed every `multiball_start(balls_in_play + n)` and
+  `multiball_add_balls` from it, never from MPF's count. Tron's End of Line add-a-ball used MPF's count and
+  asked for one ball too many while a ball sat in the scoop. (code: Tron LE 1.74 `multiball_add_balls`
+  0x0001eeb0)
+- **`multiball_start(n)` brings balls in play up to n; it does not add n.** The launch count is worked out
+  when the task runs, after the devices have released their balls (`FUN_0001e738` on Tron). So a "balls in
+  play + 1" request made while a ball is held in the scoop adds nothing once that ball is back in play. On
+  Tron, starting a second multiball at a later scoop shot (Quorra during Light Cycle) adds no ball, but
+  starting both on the same shot gives 3, because the task is still running. Log it as a ROM quirk; don't
+  "fix" it in the strict build. (code: Tron LE 1.74; the same-shot case observed in the
+  `light_cycle_multiball_repeat_and_stack` trace)
+- **Lost ball recovery** (Tron adj 63, after the 5th failed ball search): the missing balls come off the
+  installed count and new ones are served. The count goes back up only when the trough holds more balls than
+  expected (`trough_drain_check`). If the stuck ball comes free and drains first, the ball ends with a served
+  ball still on the playfield. That is the ROM's behaviour, but simulators (VPX) strand balls far more often
+  than a real machine. (code: Tron `ball_search_start` 0x0001f79c, `trough_drain_check` 0x0001dd90)
+- **Test ball counts on a simulated table**, not only on `smart_virtual`, which moves one ball per device
+  and per eject. In an MPF test on the plain `virtual` platform, replace the eject coils' `hw_driver.pulse`
+  with a small table model (trough stack, shooter lane, scoop stack, playfield). Then drive drains, scoop
+  entries and stuck balls, and compare `game.balls_in_play` with the balls the model holds. (Tron
+  `tests/test_ball_tracking.py`)
 
 ### ROM display semantics (where the first build looked wrong) [SAM]
 - **Never an empty DMD in play**: after any foreground deff ends with nothing behind it, the deff rules
