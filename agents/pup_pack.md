@@ -114,9 +114,26 @@ Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pu
 
 | Platform | Player | Note |
 |---|---|---|
-| Windows, macOS | a native video GDExtension (Media Foundation, AVFoundation), the pack's mp4s as they are | Godot 4.6+; Tron carries a fixed build (a heap overrun upstream): never replace a patched add-on with the upstream zip |
+| Windows x86_64 | GDE GoZen (FFmpeg), the pack's mp4s as they are; the GPU decodes through FFmpeg's Direct3D 11 Video hwaccel, else DXVA2 (any GPU vendor, nothing to install), frames copied back as NV12; software when the GPU cannot | the same player and optimizations as Linux (frame queue, worker-thread opens, NV12 upload). The native video add-on stays installed as the fallback, picked by a setting (Tron: `[pup] video_player="native"` or `TRON_VIDEO_PLAYER=native`) |
+| macOS | a native video GDExtension (AVFoundation), the pack's mp4s as they are | Godot 4.6+; Tron carries a fixed build (a heap overrun upstream): never replace a patched add-on with the upstream zip |
 | Linux x86_64 / arm64 | GDE GoZen (FFmpeg) | on a Jetson, NVIDIA's hardware decoder through libnvmpi (packaging agent, section 5a) |
 | Anywhere, fallback | mp4 -> Theora conversion at setup (ffmpeg with libtheora, or imageio-ffmpeg in the venv) | slow on the first setup; later runs redo only changed files |
+
+- **One player everywhere it can be.** Windows first used the native add-on (Media Foundation): the owner saw
+  audio/video stutter and drift. GoZen on Windows shares every fix made for the Jetson. (observed, Tron owner,
+  2026-10-10)
+- **The GoZen Windows build** is a MinGW-w64 cross build in Docker (Tron: `scripts/build_gozen.sh windows`,
+  `scripts/gozen/build_windows_in_docker.sh`, the hwaccel code in `scripts/gozen/gozen.patch` under `_WIN32`):
+  FFmpeg 7.1 trimmed to the pack's codecs, `--enable-d3d11va --enable-dxva2` with the h264/hevc/vp9 hwaccels,
+  asm on, everything static, so the DLL imports only Windows' own DLLs; LGPL (no `--enable-gpl`/`nonfree`).
+  One D3D11 device serves every video (FFmpeg locks it). A cloud session cannot test the GPU: Wine loads the DLL
+  and decodes in software, the GPU test is the owner's. (code, Tron-Legacy-MPF-PuP PR #15)
+- **Check the decoder without the game** (Tron: `python scripts/pup/video_check.py`): decodes a few pack videos
+  on the GPU, then with `GOZEN_HWDEC=0`, and prints per video the decoder and how many times faster than real
+  time it runs. Tron on a Ryzen 7 7800X3D: GPU (d3d11va) about 1.0 ms per 1080p frame, 33x real time (the copy
+  back from the GPU costs most of it); software 0.3 to 0.5 ms, 63x to 117x, but on all cores. Either way decoding
+  is not a desktop PC's bottleneck: the GPU path is the default because it leaves the CPU to MPF and Godot.
+  (observed, 2026-10-10)
 
 ## 7. Packaging and keeping up with the game
 
@@ -156,6 +173,6 @@ Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pu
 |---|---|---|---|
 | Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the fork's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF-PuP](https://github.com/Ashram56/Tron-Legacy-MPF-PuP) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers |
 
-Keep this file current. Last updated 2026-10-10 (fork layout and sync lessons, paths after the fork's folder move;
+Keep this file current. Last updated 2026-10-10 (Windows plays the pack through GoZen with GPU decoding; before: fork layout and sync lessons, paths after the fork's folder move;
 before: the PuP Pack agent, the format page and `tools/pup/`,
 from the Tron work in Tron-Legacy-MPF-PuP and Tron-LE-PuP-Pack).
