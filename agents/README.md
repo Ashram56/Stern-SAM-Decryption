@@ -82,7 +82,7 @@ else read from GitHub). The same holds in a cloud session that has the repositor
 | C | **Strict recreation** | [recreation.md](recreation.md) | A's repo (as a submodule), B's layout | The game repo: the ROM's game exactly (rules, display, sound, lamps, service menu, settings, audits, credits, hardware overlays), checked against A's traces |
 | D | **VPX bridge** (work in progress) | [vpx_bridge.md](vpx_bridge.md) | C's game, B's table script | VPX plays the ball, MPF replaces PinMAME and the ROM |
 | E | **Improvements** (optional) | [improvement.md](improvement.md) | C's game | Switchable departures: HD DMD, clean fonts, colour, new modes; the ROM's behaviour stays one option away |
-| F | **Packaging** | [packaging.md](packaging.md) | C's game repo, the owner's hardware line, D's and E's options | One line to install and one command to run on Windows, macOS and Linux (installers, `setup.py`, `run.py`, toolchain pins, Docker, CI), with every hardware option (MPF Monitor, P-ROC, VPX) |
+| F | **Packaging** | [packaging.md](packaging.md) | C's game repo, the owner's hardware line, D's and E's options | One line to install and one command to run on Windows, macOS and Linux (installers, `setup.py`, `run.py`, toolchain pins, Docker, CI), with every hardware option (MPF Monitor, P-ROC, VPX), and the game's full README (install, play, settings, credits) |
 | G | **PuP Pack** (optional) | [pup_pack.md](pup_pack.md) | C's game, a PuP Pack zip from its author | The pack's videos and music on the game's extra screens (backglass, LCD DMD, topper) at PinUP Player's moments; installed from the author's zip |
 
 The knowledge base the agents share (not agents themselves), in [`knowledge/`](../knowledge/README.md):
