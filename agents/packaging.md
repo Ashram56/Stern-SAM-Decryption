@@ -143,7 +143,8 @@ soon as the game repo exists:
 - **Third-party packs install from their author's zip**: a game that plays a PuP Pack takes it from the zip the
   author publishes, as an option of setup and of every installer (Tron: `TRON_PUP_ZIP`, `--pup-zip`, `-PupZip`;
   the [PuP Pack agent](pup_pack.md), section 2), and the README names the author next to it. With a zip the
-  installers skip the pack repository's token check. Windows installer parameters need
+  installers skip the pack repository's token check; without one, see "A private pack repository next to a public
+  game" above (Tron: the pack's repository joins the check only with a token given or credentials that read it). Windows installer parameters need
   `[CmdletBinding(PositionalBinding = $false)]` once a string parameter is added, or a stray setup argument binds to
   it. (verified 2026-10-10 with pwsh 7.4 on Linux)
 - **CI runs only on pushes to `main`**: test the installers locally in dry-run mode; on Windows only the
@@ -156,8 +157,8 @@ soon as the game repo exists:
 
 ## 5a. Jetson (Xavier NX, AGX Orin): an ARM cabinet with the PuP Pack
 
-The Jetson kit lives in the PuP repository ([Tron-Legacy-MPF-PuP](https://github.com/Ashram56/Tron-Legacy-MPF-PuP)),
-because it exists for the PuP Pack's videos: its `docs/jetson/xavier_nx.md` has every finding and figure,
+The Jetson kit lives in the game repository with the PuP Pack (Tron: [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF),
+merged in from the fork Tron-Legacy-MPF-PuP on 2026-10-10), because it exists for the pack's videos: its `docs/jetson/xavier_nx.md` has every finding and figure,
 `docs/jetson/README.md` the video decoding fixes, `docs/performance.md` the measurements. What an installer or launcher
 for a Jetson must do (Tron tested on a Xavier NX Developer Kit, L4T R35.6.4 / JetPack 5.1.4, Ubuntu 20.04, and an
 AGX Orin, L4T R36.4.3 / JetPack 6.2):
@@ -186,8 +187,9 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 - **Setup steps that matter on ARM:** `setup.py` bakes the clean HD fonts' signed distance fields
   (`game/tools/bake_fonts.gd`, about 2 minutes on a Xavier NX; without it the first text froze the game 20 s and
   more) and `gen_media.py` imports the HD effect frames VRAM-compressed. Both rerun when their inputs change.
-- **Run options** (the PuP repo's `run.py`; its `docs/upstream_issues/README.md` lists what to port here): `run.py --render-thread` / `TRON_RENDER_THREAD=1` (Godot's separate render thread, off by default here
-  on Godot 4.5.2; the PuP repo on Godot 4.6.3 has it on and `--no-render-thread` / `TRON_RENDER_THREAD=0` there), `TRON_PIN=0` (core pinning, Linux with 4+ cores), `TRON_PERF_DIR` (the performance probe; use
+- **Run options**: `run.py --no-render-thread` / `TRON_RENDER_THREAD=0` (Godot's separate render thread is on by
+  default on Godot 4.6.3, where it won with three videos; on Godot 4.5.2 with the DMD alone it lost, so retest it at
+  every Godot upgrade), `TRON_PIN=0` (core pinning, Linux with 4+ cores), `TRON_PERF_DIR` (the performance probe; use
   `scripts/perf/run.sh`). Each new run option reaches `docker/entrypoint.py` and `docker/tron.env.example` too.
 - **On the board by Remote Control:** the cabinet has no GitHub credentials, so the session there hands its changes
   back as `git format-patch` files in the project's shared files, and a cloud thread applies, checks and pushes
@@ -202,5 +204,5 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-10 (the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-10 (PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).

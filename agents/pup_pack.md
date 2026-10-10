@@ -12,15 +12,16 @@ from the pack author's own download. Optional, like the [improvements](improveme
 strict game. Part of the [master plan](README.md). The format and the matching method are in
 [knowledge/pup_pack_format.md](../knowledge/pup_pack_format.md); the tool is
 [tools/pup/pup_decode.py](../tools/pup/pup_decode.py). Tron is the worked example: its game with the pack is
-[Tron-Legacy-MPF-PuP](https://github.com/Ashram56/Tron-Legacy-MPF-PuP) (a fork of the game repo), its decoded
+[Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) (built in the fork Tron-Legacy-MPF-PuP, merged
+back into the game repo on 2026-10-10), its decoded
 pack [Tron-LE-PuP-Pack `docs/decoding/`](https://github.com/Ashram56/Tron-LE-PuP-Pack/blob/main/docs/decoding/README.md).
-Paths in `code` are Tron-Legacy-MPF-PuP's unless said otherwise.
+Paths in `code` are Tron-Legacy-MPF's unless said otherwise.
 
 ## 1. Inputs and outputs
 
 | In | Out |
 |---|---|
-| The pack: **the zip its author publishes** (or a private copy, section 2) and its author's name and download page | A game repo (or fork) that plays the pack on its own windows, with the game unchanged when the pack is off |
+| The pack: **the zip its author publishes** (or a private copy, section 2) and its author's name and download page | The game repo playing the pack (build it there, not in a fork: section 7) on its own windows, with the game unchanged when the pack is off |
 | C's game repo: its display effect events, switch names, sound tracks | The pack decoded: `pup_decode.py decode` JSON, and a human page (Tron: Tron-LE-PuP-Pack `docs/decoding/`) |
 | The owner's screens: backglass, a large DMD/LCD, a topper, which are optional | The trigger map (`game/<game>_pup/trigger_map.yaml`) and its match report (`docs/pup/captures.md`) |
 | | Install and setup taking the pack from its zip, crediting its author; per-cabinet screen settings |
@@ -150,26 +151,35 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
 
 ## 7. Packaging and keeping up with the game
 
+- **Build the pack into the game repo, not a fork.** Tron's fork (Tron-Legacy-MPF-PuP) diverged by 112 commits
+  in five days; every platform fix landed twice and each sync conflicted (14 files at the final merge), so the
+  owner merged it back into the game repo (Tron-Legacy-MPF PR #41, 2026-10-10). Transformers built it in the game
+  repo from the start. With the pack optional and in its own files, the game repo stays the strict game when
+  the pack is absent. (observed)
+- **An optional private pack never blocks a public install.** When the pack's default source is a private
+  submodule, the installers include it in the token check only when a token was given up front or git's
+  credentials can already read it; otherwise they say so in one line and install the game without the pack
+  (Tron: `install_prereqs_*` `github_auth`). `setup.py`'s pack step fails soft and the game runs without it.
+  The CI checkout leaves that submodule out. (code, Tron merge 2026-10-10)
 - **Keep the PuP in its own files** and touch the game's files with one-line hooks only (Tron: the config
   include, the Godot autoload, `.gitmodules`, `.gitignore`, one `pup_setup` call each in `setup.py` and
-  `run.py`), so the upstream game merges in cleanly (`scripts/sync_upstream.py`, then the capture re-check).
+  `run.py`), so a reader sees what is the pack's and a game change rarely touches it (then re-run the capture
+  check).
 - `setup.py` runs the PuP step after the game's media: fetch or extract the pack (section 2), install the video
   add-on for the platform, list the videos (convert them only where no add-on runs), print the status line.
 - Every installer gets the zip option and passes it on; the [packaging agent](packaging.md) owns the installers.
-- **The fork's own files in their own folders** (Tron: `scripts/pup/`, `docs/pup/`, `docs/jetson/`, `game/pup/`,
-  `game/tron_pup/`), marked as the fork's in the README's folder tree, so a reader and a merge both see what is
-  upstream's. (code, Tron-Legacy-MPF-PuP PR #16)
+- **The pack's own files in their own folders** (Tron: `scripts/pup/`, `docs/pup/`, `docs/jetson/`, `game/pup/`,
+  `game/tron_pup/`), marked *(PuP)* in the README's folder tree. (code, Tron-Legacy-MPF-PuP PR #16)
 - **Never move a folder something outside the repository links to**: filed upstream issues link to their test
   programs and patches, and the one-line installers are fetched by URL (Tron: `scripts/gozen/`,
   `scripts/install/`, `pup_addons/`, `docs/upstream_issues/` stay where they are). A pull that empties a folder
   leaves it behind: `scripts/clean_tree.py` lists and removes them, and the sync runs it. (code)
-- **Fix the game in the game repo, not in the fork.** A platform fix made in the fork and again upstream
-  conflicts at the next sync: Tron's Xavier NX work landed in both (upstream PR #35), and the following sync
-  conflicted in 10 files (`run.py`, `gen_media.py`, `dmd_mode.gd`, the Docker env, two test files). Port the fix
-  upstream first and let the fork take it by sync; keep in the fork only what exists for the pack. (observed,
-  trial merge 2026-10-10)
-- **The game's instructions for Claude come from upstream too** (`CLAUDE.md` loading the game page): the fork
-  adds lines for the pack (agent G, its own folders) and keeps upstream's text, so the sync merges it.
+- **If a fork already exists, merge it back** rather than keep syncing: a platform fix made in a fork and again
+  upstream conflicts at every sync (Tron's Xavier NX work landed in both, upstream PR #35; the next sync
+  conflicted in 10 files). At the merge, where both sides changed the same setting, take the side measured with
+  the toolchain the merged repo ends up on (Tron: Godot 4.6.3 from the fork, so its render thread default),
+  restore the game repo's install URLs and folder names, drop the fork's sync script, and log the pack's
+  departures (music, extra screens) in the game's `docs/rom_differences.md`. (observed, Tron 2026-10-10)
 
 ## 8. Learned so far
 
@@ -207,10 +217,10 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
 
 | Game | Pack | Game with the pack | State |
 |---|---|---|---|
-| Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the fork's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF-PuP](https://github.com/Ashram56/Tron-Legacy-MPF-PuP) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers; not yet on `tools/pup/runtime/` |
+| Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the game's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) (the fork merged back 2026-10-10) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers; not yet on `tools/pup/runtime/` |
 | Transformers Pro 1.80 | `tf_180` v1.0 by TerryRed, private copy `Ashram56/Transformers-PuP` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `claude/pup-pack` (in the game repo, not a fork) | Built on `tools/pup/runtime/`: backglass with its five overlay boxes, DMD in the pack's art, topper, the pack's music; every capture in use mapped, each variant checked against the ROM's animation tables; GoZen with d3d11va on Windows (1080p at 4.3 ms a frame, Ryzen 7 2700), Godot 4.6.3; seen running a Blackout battle on Windows |
 
-Keep this file current. Last updated 2026-10-10 (variants from the ROM's animation tables, not the pack's row order; before: the runtime in `tools/pup/runtime/` with GoZen on Windows,
+Keep this file current. Last updated 2026-10-10 (Tron's fork merged back into the game repo: build in the game repo, optional private pack in installers; before: variants from the ROM's animation tables, not the pack's row order; before: the runtime in `tools/pup/runtime/` with GoZen on Windows,
 conditions on arguments and the player's state, whole-frame captures, never convert; from the Transformers pack;
 before: Windows plays the pack through GoZen with GPU decoding, fork layout and sync lessons, the PuP Pack agent,
 the format page and `tools/pup/`, from the Tron work in Tron-Legacy-MPF-PuP and Tron-LE-PuP-Pack).
