@@ -39,8 +39,10 @@ test (`python -m pytest -q tests`), and run `install.py` again in every game tha
 
 The scripts need the game's `scripts/toolchain.py` (`ROOT`, `GAME`, `GODOT_VERSION`, `host_os`, `host_arch`,
 `venv_python`, `python`) and `scripts/fsutil.py` (`copy_tree`, `remove_dir`, `replace`), as the master plan's
-packaging kit has them. Video add-ons (native_video for Windows and macOS on Godot 4.6+, GDE GoZen for Linux)
-are used when the game carries them in `pup_addons/`; otherwise the videos are converted to Theora.
+packaging kit has them. Video add-ons ship in `pup_addons/`: GDE GoZen plays the pack's mp4s on Linux and Windows
+(FFmpeg, GPU decoding: Direct3D 11 Video / DXVA2 on Windows, the Jetson's decoder with libnvmpi), native_video on
+macOS and as Windows' fallback (`[pup] video_player="native"`, Godot 4.6+). Theora conversion only where neither runs.
+`python scripts/video_check.py` decodes a few pack videos with GoZen on the GPU and in software and prints the speed.
 
 ## `game/pup.cfg`
 
@@ -56,6 +58,7 @@ INI with JSON values (Godot's ConfigFile reads the same file). Transformers-MPF'
 | `[pup] bridge` | machine attribute path to the game's media bridge (`sound(call, index)`, `music_key`, `data["pools"]`), whose music calls are dropped while the pack's music plays |
 | `[pup] state` | machine attribute path to the current player's rule state, given to every event as `state` |
 | `[pup] attract_mode`, `attract_cycle_seconds` | `pup_attract_cycle` every so often while attract runs |
+| `[pup] video_player` | `gozen` (default where installed) or `native` (Windows' fallback); `<env>_VIDEO_PLAYER` overrides it for one run |
 | `[pup] layout`, `title`, `video_volume`, `music_volume` | `stack` (one under the other) or `manual` (per window) |
 | `[<window>] layers=[n, ...]` | a window of PuP screens, bottom first; a screen with `CustomPos` in `screens.pup` sits in its box; ForcePop screens show only while playing |
 | `[<window>] dmd=true` | the DMD window: `background` = `frame` (`frame_image`, `frame_crop`, `dmd_rect`), `black`, or `res://...gd` (a Control with `set_dmd_rect(Rect2)`); `dots`, `hide_main_window` |
