@@ -108,3 +108,14 @@ def test_match_and_map(pack_zip, tmp_path):
     assert "  1: [game_deff_7]  # 100%" in lines
     assert "  7: sw7       # rename to the game's switch name" in lines
     assert any(line.startswith("  5: []   # W11=1,L35=1") for line in lines)
+
+
+def test_capture_without_a_rectangle_compares_the_whole_frame():
+    image = Image.new("RGB", (128, 32))
+    for xy in ((0, 0), (127, 31), (64, 16)):
+        image.putpixel(xy, (255, 69, 0))
+    out = io.BytesIO()
+    image.save(out, "BMP")
+    cap = pup_decode.capture(out.getvalue())
+    assert cap["rect"] == [0, 0, 127, 31]
+    assert bin(cap["lit"]).count("1") == 3

@@ -81,6 +81,10 @@ Screens 2 and 12 (backglass underlay and top layer), 13 and 14 (topper, `off` in
    from the asset package's `event_map.csv`, column `library_animations`). Tron: 14,691 frames, 22 s; 83 of 98
    captures at 100 %, 88 at 90 % or more; the written map agrees with Tron's hand-checked map on 87 of its 99
    lines.
+   The package layout differs per game: Transformers' frames are one level deeper
+   (`rom/mpf_package/media/dmd/deffs/deff_NNN/frames/*.png`, `.../deff_NNN/reference_capture.gif`); the runtime's
+   `scripts/pup_captures.py` takes the globs, `event_map.csv` and the event name from `game/pup.cfg [captures]`
+   and checks the trigger map against the match after every sync.
 3. **Check every line by hand** (knowledge doc section 6): shared frames, partial frames (score lines: map to
    `player_added{num==n}`), frames the game never records (boot screen, attract logo: the game's PuP side posts
    its own events), unused captures, conditions on event arguments.
@@ -90,15 +94,21 @@ Screens 2 and 12 (backglass underlay and top layer), 13 and 14 (topper, `off` in
    and marks **check** where the mapped effect no longer draws the capture) and run it after every sync with
    the upstream game.
 
-## 5. Play it: the runtime (Tron's design, reusable)
+## 5. Play it: the runtime ([tools/pup/runtime/](../tools/pup/runtime/README.md))
 
-| Piece | Tron | What it does |
+The runtime is game agnostic and lives in this repository: `python tools/pup/runtime/install.py <game repo>`
+copies it into the game, which configures it in `game/pup.cfg` and never edits the copies (change them here,
+install again). Its README lists the files, the one-line hooks and every setting. Built on Tron
+(Tron-Legacy-MPF-PuP) and made generic on Transformers (Transformers-MPF, branch `claude/pup-pack`).
+
+| Piece | In the game | What it does |
 |---|---|---|
-| Pack reader | `game/tron_pup/pupfiles.py` | reads the three `.pup` files as PinUP Player does; the pack is never edited |
-| Engine | `game/tron_pup/engine.py` | event (with an optional argument condition) or switch -> rows; `RestSeconds`; two captures of one effect send a row once; no MPF import, so unit tests drive it |
-| MPF side | `game/tron_pup/mode.py`, a mode that is never started | hooks the machine at init (the rules stay untouched); sends each row as a BCP `pup_play` to Godot; posts the synthetic events (`pup_boot`, `pup_power_up`, `pup_attract_cycle`) |
-| Godot player | `game/pup/pup_player.gd`, `pup_screen.gd` (autoload `Pup`) | the windows, and per PuP screen the PinUP Player rules: priority, `Loop`, `SetBG`, `StopFile`, `StopPlayer`, `SkipSamePrty`, playlists in order or random, pop-up top layers, background back after a video |
-| Settings | `game/pup.cfg` + untracked `game/pup.local.cfg`, read by both sides | on/off (`TRON_PUP=0`), third screen, OST music, window layout (`stack` on a desktop, `manual` per screen for a cabinet), video fit |
+| Pack reader | `game/pup_runtime/pupfiles.py` | reads the three `.pup` files as PinUP Player does; the pack is never edited |
+| Engine | `game/pup_runtime/engine.py` | event (with conditions on its arguments, list items, the player's state, counts since a reset) or switch -> rows; `RestSeconds`; two captures of one effect send a row once; no MPF import, so unit tests drive it |
+| MPF side | `game/pup_runtime/mode.py`, a mode that is never started | hooks the machine at init (the rules stay untouched); ignores events until Godot's player is ready (so no row starts resting unseen); sends each row as a BCP `pup_play`; posts `pup_boot`, `pup_power_up`, `pup_attract_cycle`; gives each event the player's rule state (`[pup] state`) |
+| Godot player | `game/pup/pup_player.gd`, `pup_screen.gd` (autoload `Pup`) | the windows from `[pup] windows` (layers of PuP screens, `CustomPos` boxes, `PuPOverlays` pictures, the DMD window), and per screen the PinUP Player rules: priority, `Loop`, `SetBG`, `StopFile`, `StopPlayer`, `SkipSamePrty`, playlists in order or random, pop-up top layers, background back after a video |
+| Settings | `game/pup.cfg` + untracked `game/pup.local.cfg`, read by both sides | on/off (`<env>_PUP=0`), windows and their screens, music screen, third screen, window layout (`stack` on a desktop, `manual` per screen for a cabinet), video fit |
+| Video add-ons | `pup_addons/` (copied to `game/addons/` by setup) | native_video (Windows, macOS; the heap-fixed build) and GDE GoZen (Linux): the pack's mp4s play as they are, hardware decoded |
 
 - **Music hand-over**: Godot answers MPF's `pup_hello` with `pup_ready` once its windows and media are there;
   only then MPF drops the ROM's music calls (the sound pools on the music track) and stops the running ROM
@@ -110,13 +120,17 @@ Screens 2 and 12 (backglass underlay and top layer), 13 and 14 (topper, `off` in
 
 ## 6. Video playback per platform
 
-Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup.md` and `docs/jetson.md`):
+**Play the pack's mp4s as they are, with a native hardware-decoding add-on; do not convert them** (the owner's
+rule, 2026-10-10: converting a 1 GB pack to Theora took most of an hour on the first Transformers setup for
+nothing). The game needs Godot 4.6+ for native_video (Transformers moved from 4.5.2 to 4.6.3 for it). Godot's own
+player only does Theora, so conversion is the fallback for a machine with no add-on. Details in
+Tron-Legacy-MPF-PuP `docs/pup.md` and `docs/jetson.md`:
 
 | Platform | Player | Note |
 |---|---|---|
 | Windows, macOS | a native video GDExtension (Media Foundation, AVFoundation), the pack's mp4s as they are | Godot 4.6+; Tron carries a fixed build (a heap overrun upstream): never replace a patched add-on with the upstream zip |
 | Linux x86_64 / arm64 | GDE GoZen (FFmpeg) | on a Jetson, NVIDIA's hardware decoder through libnvmpi (packaging agent, section 5a) |
-| Anywhere, fallback | mp4 -> Theora conversion at setup (ffmpeg with libtheora, or imageio-ffmpeg in the venv) | slow on the first setup; later runs redo only changed files |
+| Anywhere, fallback only | mp4 -> Theora conversion at setup (ffmpeg with libtheora, or imageio-ffmpeg in the venv) | slow on the first setup; later runs redo only changed files |
 
 ## 7. Packaging and keeping up with the game
 
@@ -124,7 +138,7 @@ Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pu
   include, the Godot autoload, `.gitmodules`, `.gitignore`, one `pup_setup` call each in `setup.py` and
   `run.py`), so the upstream game merges in cleanly (`scripts/sync_upstream.py`, then the capture re-check).
 - `setup.py` runs the PuP step after the game's media: fetch or extract the pack (section 2), install the video
-  add-on for the platform, convert or list the videos, print the status line.
+  add-on for the platform, list the videos (convert them only where no add-on runs), print the status line.
 - Every installer gets the zip option and passes it on; the [packaging agent](packaging.md) owns the installers.
 
 ## 8. Learned so far
@@ -135,12 +149,24 @@ Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pu
 - Linux needs X11 (not Wayland) for one window per monitor; a cabinet needs screen blanking off and autologin.
 - Several screens switching videos at once, and video work on Godot's main thread, froze ARM boards: decode
   off the main thread at the size the window shows (Tron-Legacy-MPF-PuP `docs/jetson.md`).
+- A capture without a purple rectangle compares the whole frame; the decoder skipped them before (Transformers
+  1, 8, 9).
+- Most of a pack's captures can be the variants of one effect (Transformers: every battle shot, side, lock and
+  wizard shot): map them with conditions on the event's arguments and the player's state (section 4,
+  knowledge doc section 6), adding the argument to the game's call when it is missing.
+- Screen numbers and roles are the author's: Transformers puts the music on 4 and the topper on 0 (both `off` in
+  the shipped option), and five overlay boxes on the backglass with `CustomPos`. Read `screens.pup`; configure
+  the windows' `layers` from it.
+- `D0` without `=1` is the start-up trigger too (Transformers row 246, the backglass overlay).
+- Events that reach the PuP side before Godot's player is ready must not fire rows: their `RestSeconds` would
+  start counting for nothing (seen on Transformers: Ball Saved silenced for 10 s after Godot came up).
 
 ## 9. Status per game
 
 | Game | Pack | Game with the pack | State |
 |---|---|---|---|
-| Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the fork's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF-PuP](https://github.com/Ashram56/Tron-Legacy-MPF-PuP) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers |
+| Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the fork's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF-PuP](https://github.com/Ashram56/Tron-Legacy-MPF-PuP) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers; not yet on `tools/pup/runtime/` |
+| Transformers Pro 1.80 | `tf_180` v1.0 by TerryRed, private copy `Ashram56/Transformers-PuP` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `claude/pup-pack` (in the game repo, not a fork) | Built on `tools/pup/runtime/`: backglass with its five overlay boxes, DMD in the pack's art, topper, the pack's music; 210 of 213 captures in use mapped; native mp4 on Godot 4.6.3; seen running a Blackout battle on Windows |
 
-Keep this file current. Last updated 2026-10-10 (new: the PuP Pack agent, the format page and `tools/pup/`,
-from the Tron work in Tron-Legacy-MPF-PuP and Tron-LE-PuP-Pack).
+Keep this file current. Last updated 2026-10-10 (new: the runtime in `tools/pup/runtime/`, conditions on
+arguments and the player's state, whole-frame captures, native mp4 only; from the Transformers pack).

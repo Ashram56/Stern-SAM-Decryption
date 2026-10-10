@@ -126,7 +126,7 @@ def bits(pixels, test):
 
 def capture(data):
     """A PupCapture BMP (bytes) -> {rect: [x0, y0, x1, y1], mask, lit} (mask/lit: int, bit y*128+x), or None
-    when it has no purple rectangle or is not 128x32."""
+    when it is not 128x32. A capture with no purple rectangle compares the whole frame (Transformers: 1, 8, 9)."""
     from PIL import Image
     image = Image.open(io.BytesIO(data)).convert("RGB")
     if image.size != (W, H):
@@ -134,7 +134,8 @@ def capture(data):
     px = pixels(image)
     purple = bits(px, lambda p: p == PURPLE)
     if not purple:
-        return None
+        mask = (1 << (W * H)) - 1
+        return {"rect": [0, 0, W - 1, H - 1], "mask": mask, "lit": bits(px, lambda p: p[0] >= LIT)}
     xs = [i % W for i in range(W * H) if purple >> i & 1]
     ys = [i // W for i in range(W * H) if purple >> i & 1]
     x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)

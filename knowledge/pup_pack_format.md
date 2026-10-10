@@ -37,7 +37,12 @@ Columns: `ScreenNum, ScreenDes, PlayList, PlayFile, Loopit, Active, Priority, Cu
   used by this option set), and music-only screens. (observed, Tron: 2 `ForceBack`, 12 `ForcePopBack`,
   13/14 `off`)
 - `PlayList` / `PlayFile` is the screen's background. `CustomPos` (`ref,x,y,w,h`, in percent of screen `ref`)
-  places a layer over another one.
+  places a layer over another one (Transformers: screens 11-15, `ForceBack`, are the text panel, the two crests
+  and the two faces boxes of backglass screen 2; each has its own background video and its own trigger rows).
+- Two folder names are PinUP Player conventions, not playlists to play like the others: `PuPOverlays` (a
+  transparent PNG that stays over the screen's video: Transformers row 246 "Overlay - Default", `D0` on screen 2,
+  the backglass frame) and `PuPAlphas` (alpha masks of the backbox art; Transformers' 4:3 one also holds the DMD
+  panel art). (inferred from the packs and `Option Selected.jpg`)
 - Screen numbers are the pack author's choice; read them, don't assume them. Decide per screen which window of
   the game shows it (Tron: 2 + 12 backglass, 13 + 14 topper, 15 music only).
 - Screens set `off` by the shipped option may be the pack's optional displays (Tron: the topper; the pack's
@@ -86,8 +91,10 @@ condition on its arguments when one effect draws several captures by variant (Tr
 
 `PupCapture/<n>.bmp` is a 128x32, 24-bit BMP: a screenshot of PinMAME's DMD. Pixels of exactly `RGB(253,0,253)`
 (purple) draw a rectangle; only the dots inside it count, each lit (red >= 9) or unlit, and the purple pixels
-themselves are ignored. `D<n>` fires when a DMD frame has the same dots inside that rectangle. (code, checked on
-all 98 Tron captures: 83 match a recorded frame at 100 %, 88 at 90 % or more)
+themselves are ignored. `D<n>` fires when a DMD frame has the same dots inside that rectangle. A capture with
+**no purple pixel compares the whole frame** (observed, Transformers `tf_180`: captures 1, 8, 9, 14 and 15 have no
+rectangle; 8 and 9 match the BALL SAVED and TILT effects at 100 % as whole frames). (code, checked on all 98 Tron
+captures: 83 match a recorded frame at 100 %, 88 at 90 % or more; Transformers: 225 captures, 150 at 100 %)
 
 To translate one, compare it with every frame the game can show (each display effect's recorded animation, its
 variants, the ROM's shared library animations credited to the effects that play them) and score each frame
@@ -99,7 +106,15 @@ by intersection over union of lit dots inside the rectangle. The effects with a 
   it to the game event that means it (`player_added{num==1}`), not to the best-scoring effect.
 - **A frame the game never records** (the boot screen, the attract cycle's logo): the game posts its own event
   (Tron: `pup_power_up` at the first attract, `pup_attract_cycle` on a timer).
-- **Captures no row uses** (Tron: 14 of 98): leave them out of the map, note them.
+- **Captures no row uses** (Tron: 14 of 98): leave them out of the map, note them. Rows with `Active=0` don't count.
+- **One effect, several animations** (Transformers: 75 captures score 100 % against a ROM library animation that
+  no effect is credited with): the ROM picks the animation by game state (the battle's shot number, the
+  player's side, the lock number, the wizard shot), while the ROM extraction recorded one variant per effect.
+  Map the capture to that effect **with a condition on the event's arguments or the player's state**
+  (`game_deff_102{hit==3, completed==0}`, `game_deff_40{state.side==1}`, `game_deff_140{values.0==2}`), or a
+  count since the mode's intro (`counters:`). When the game does not post the argument, add it in the call
+  (a one-line hook: Transformers' battle hit effect got `hit` and `completed`). The pack's row order gives the
+  order of the shot videos (inferred until checked in play).
 - Two captures of one effect firing the same row must send it once.
 
 Re-run the match whenever the game's DMD animations change: an effect renumbered or redrawn breaks only the
@@ -108,7 +123,7 @@ lines whose mapped effect no longer draws the capture.
 ## 7. Music
 
 A pack that replaces the game's music plays it on a music-only screen with `SetBG` rows (Tron: screen 15, the
-OST). In PinUP Player the ROM's own music is muted by the user. In MPF, drop the ROM's music calls only once the
+OST; Transformers: screen 4, `off` in the shipped option, whose ReadMe asks for a muted ROM). In PinUP Player the ROM's own music is muted by the user. In MPF, drop the ROM's music calls only once the
 PuP player says it is ready (videos and music in place); otherwise the game keeps its own music. Speech and
 effects always stay. (code, Tron)
 
@@ -118,4 +133,5 @@ A pack is made against one ROM version: its captures are that version's frames. 
 release of the pack, can change captures or rows: re-run the match and the decode, and fix the map lines that
 change. Record the pack's version and author with the game. (inferred)
 
-Last updated 2026-10-10 (from the Tron pack's decoding in Tron-LE-PuP-Pack and the Tron-Legacy-MPF-PuP player).
+Last updated 2026-10-10 (from the Tron pack's decoding in Tron-LE-PuP-Pack and the Tron-Legacy-MPF-PuP player; whole-frame
+captures, effects with several animations, CustomPos boxes and PuPOverlays from the Transformers pack).
