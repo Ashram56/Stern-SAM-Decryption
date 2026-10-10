@@ -49,14 +49,17 @@ then carries it into every installer, the one-line commands, Docker, CI and the 
    existing clone), runs `setup.py`, and ends by printing the run command. Tron:
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/<owner>/<repo>/main/scripts/install/install_prereqs_windows.ps1 | iex"
+   powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/<owner>/<repo>/main/scripts/install/install_prereqs_windows.ps1) -join [char]10))"
    ```
    ```sh
    bash <(curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/scripts/install/install_prereqs_macos.sh)   # or ..._linux.sh
    ```
 
-   With options, the Windows line needs the scriptblock form:
-   `powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm <URL>))) -Vpx -Table '<table.vpx>'"`.
+   Options go at the end of the Windows line: `... -join [char]10)) -Vpx -Table '<table.vpx>'"`. **Never
+   `irm <URL> | iex`**: on the Transformers owner's Windows PowerShell it ran the script line by line and stopped
+   on line 1 ("the terminator #> is missing from the multiline comment"; reproduced in pwsh with
+   `Get-Content <script> | iex`, observed 2026-10-10). The `-join [char]10` makes one script whether `irm` returns
+   a string or lines; dry-run the README's exact line with pwsh before publishing it.
 2. **One command to run**, per platform and target, from the install folder:
    `.venv\Scripts\python scripts\run.py [--monitor | --hw proc | --hw vpx]` (Windows), `.venv/bin/python
    scripts/run.py ...` (macOS, Linux). The installer prints it at the end, with the options it was given.
