@@ -11,7 +11,8 @@ project.
 | Folder | What it holds |
 |---|---|
 | [`agents/`](agents/README.md) | One Markdown file per agent: A [ROM extraction](agents/rom_extraction.md), B [VPX extraction](agents/vpx_extraction.md), C [strict recreation](agents/recreation.md), D [VPX bridge](agents/vpx_bridge.md), E [improvements](agents/improvement.md), F [packaging](agents/packaging.md) |
-| [`knowledge/`](knowledge/README.md) | The reference docs the agents share: the SAM to MPF playbook, the HD DMD method, what a recreation needs from a ROM extraction |
+| [`knowledge/`](knowledge/README.md) | The reference docs the agents share: the SAM to MPF playbook, the SAM boards' bus and interfaces, the SAM OS API, rules spec templates, the HD DMD method, what a recreation needs from a ROM extraction |
+| [`tools/rom/`](tools/rom/README.md) | The ROM extraction toolkit from Tron: PinMAME hooks and trace recorder, Ghidra pipeline, table and media extractors, bus tracer |
 | [`tools/vpx/`](tools/vpx) | `vpx_extract.py` and `vpx_map.py`: a `.vpx` table to an MPF Monitor layout (`pip install olefile pillow`) |
 | `tests/` | `python -m pytest -q tests` |
 

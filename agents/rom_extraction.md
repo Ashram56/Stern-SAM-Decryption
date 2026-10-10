@@ -16,9 +16,17 @@ Read it as a reference implementation:
 conventions), [mpf_package/README.md](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/mpf_package/README.md) (asset package),
 [io/README.md](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/io/README.md) (IO and RGB tubes), [docs/agent_notes/](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/docs/agent_notes/) (raw notes),
 [rules/work/asset_audit.md](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/rules/work/asset_audit.md) (an audit that found real extraction errors),
-[io/bus/README.md](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/io/bus/README.md) and [io/bus/CPU_BOARD_IO.md](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/io/bus/CPU_BOARD_IO.md) (every interface
+[io/bus/README.md](../knowledge/sam_hardware/README.md) and [io/bus/CPU_BOARD_IO.md](../knowledge/sam_hardware/CPU_BOARD_IO.md) (every interface
 the CPU board drives, with timing), [docs/PRO_VS_LE.md](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/docs/PRO_VS_LE.md) and
 [rom_data/pro/](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/rom_data/pro/README.md) (a second model of the same game, ported from the first).
+
+**Tools and knowledge in this repository.** The tools named below by their Tron paths are copied in
+[`tools/rom/`](../tools/rom/README.md) (its README maps each Tron path, e.g. `rules/tools/trace/` is
+`tools/rom/emulator_trace/`); the SAM boards' bus and interfaces are in
+[`knowledge/sam_hardware/`](../knowledge/sam_hardware/README.md), the OS API with signatures (Tron addresses) in
+[`knowledge/sam_os_api.json`](../knowledge/sam_os_api.json), and the rules spec template and worker brief in
+[`knowledge/templates/`](../knowledge/templates). Related research: [Stern-SAM-Databus-Analysis](https://github.com/Ashram56/Stern-SAM-Databus-Analysis)
+(schematics of the bus).
 
 **Where this agent fits.** This is agent A of the [master plan](README.md). It writes into the game's own
 asset/spec repository (Tron: Tron-Legacy-LE-ROM-Decryption), never into this one: this repository holds only
@@ -280,7 +288,7 @@ forcing method in every trace that depends on a random branch.
 ## 5. The OS API and the data tables, and how to find them
 
 On Tron the OS (0x0-0x36000) holds the framework and the game code calls into it. The full list of 160
-identified OS functions with signatures and evidence is [rules/work/os_api.json](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/rules/work/os_api.json).
+identified OS functions with signatures and evidence is [rules/work/os_api.json](../knowledge/sam_os_api.json).
 *(Tron only, untested elsewhere:)* other SAM games of the same OS generation likely share most of this
 code at different addresses. A good first move on a new ROM is to build byte signatures of Tron's OS
 functions (mask `BL` offsets and literal-pool loads) and search the new OS block for them.
@@ -563,8 +571,8 @@ labels on Tron).
 Needed when the owner wants to repair, replace or improve the hardware (Tron: a replacement CPU board
 with finer LED PWM), and useful for any rebuild that drives real boards. Everything below is the ROM's
 software timing; the board itself has no timing of its own. Tron's full result is
-[io/bus/README.md](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/io/bus/README.md) (power board bus, lamp matrix, PWM proposal) and
-[io/bus/CPU_BOARD_IO.md](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption/blob/main/io/bus/CPU_BOARD_IO.md) (DMD, audio, switches, RTC, serial), with CSVs beside them.
+[io/bus/README.md](../knowledge/sam_hardware/README.md) (power board bus, lamp matrix, PWM proposal) and
+[io/bus/CPU_BOARD_IO.md](../knowledge/sam_hardware/CPU_BOARD_IO.md) (DMD, audio, switches, RTC, serial), with CSVs beside them.
 
 **Procedure:**
 1. **Chip selects and boot setup.** Log every AT91 on-chip peripheral write from power-on (EBI, AIC,
