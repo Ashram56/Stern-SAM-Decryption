@@ -36,6 +36,19 @@ a clean TrueType font at the ROM's positions (MSDF, sharp at any size; its field
 found, cleared and redrawn live (`scripts/frame_text.py`); pictures that are only frames and blocks drawn as
 rectangles. Mode precedence and options are in `game/tools/dmd_mode.gd`.
 
+**Display options in the service menu** (Tron: ADJUSTMENTS > DISPLAY ADJUSTMENTS, text glow and size; MPF
+`tron/settings.py` DisplaySettings, Godot `dmd_mode.gd` service_setting()). The operator edits them like the
+ROM's adjustments, but they are the game's own items (added to a ROM menu at run time, a row in
+`rom_differences.md`), not ROM adjustment numbers. MPF reaches Godot through machine variables: GMC already
+monitors them (`monitor_start?category=machine_vars`: every value at connect, every change after), and
+`MPF.game.machine_update` fires on each, so no extra BCP command is needed. Keep two variables per option: the
+persisted operator value, and a live one, not persisted, that the display follows (-1 = the value the display
+was started with, so command-line options still work until the operator changes it). The value being edited
+goes to the live one at once, so the operator sees it on the menu text itself; BACK and leaving the screen put
+the stored one back. Text nodes join a group and redraw on change; anything that draws at draw time from the
+style (rather than caching it) then follows without more code. Test the Godot side with
+`slide_capture.gd`'s `machine_vars` job key, which calls `MPF.game.update_machine` as GMC does.
+
 Each game's current defaults and the way back to the ROM are on its game page (Tron:
 [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "E, improvements").
 
@@ -75,4 +88,4 @@ Ask the owner before starting any idea listed there as not built.
 and pictures at 1920x480 and 3840x960 for the owner (render through Xvfb with `--rendering-driver opengl3`;
 `--headless` draws nothing). Bump `frame_text.VERSION` when the text matching changes (it keys the cache).
 
-Last updated 2026-10-10 (moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).
+Last updated 2026-10-10 (display options in the service menu; moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).
