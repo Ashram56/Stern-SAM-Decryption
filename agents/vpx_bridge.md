@@ -8,7 +8,10 @@ Make a Visual Pinball X table play with the MPF game instead of PinMAME and the 
 physics and the mechanical sounds; MPF runs the rules; Godot draws the DMD and plays the ROM's speech and
 music. Part of the [master plan](README.md). The player-facing set-up is the game repo's `docs/vpx.md` (Tron:
 [vpx.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/vpx.md)); this page is what an agent needs to continue the work, or to start it on another game.
-File paths in `code` are the Tron game repo's ([Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF)) unless said otherwise. Labels: **verified** (run), **unverified**, **owner test**
+File paths in `code` are the Tron game repo's ([Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF)) unless said otherwise.
+The second game, Transformers Pro 1.80 (`tf_180`, the "Transformers Pro (Stern 2011) v.2.4" VR-Hybrid table), is
+the one to copy from for a new game: its bridge files are generic, with every game value in a constants block
+([Transformers-MPF](https://github.com/Ashram56/Transformers-MPF), branch `claude/vpx-bridge-d47e04`; section 4). Labels: **verified** (run), **unverified**, **owner test**
 (only possible on the owner's Windows PC).
 
 ## 1. The pieces (Tron, as built)
@@ -55,10 +58,12 @@ name. The differences are all in the overlay and the adapter:
 | -4 | coin door open | sam.vbs has none; the `End` key line added by vpx_table.py |
 | 41 (Tron disc opto) | not inverted | the table closes it while the ball is on the disc |
 | solenoids 1-32 | coils/flashers of the same number | reported 0 or 255 (`UseVPMModSol`); a pulse is reported at least once even if it ends between two polls |
+| lamps 1-80 | lights of the same number | 0-255 (MPF's brightness) when the table sets `UseVPMModSol = 2`, else 0/1 (section 4a) |
+| coins 65-69 | coin slots 1-5 | Transformers maps all five; sam.vbs has keys for 65-67 only |
 | solenoid 33 | "flippers enabled" | input of sam.vbs fast flips (`cvpmFFlipsSAM`, `SolCallback(33)`); on while any MPF flipper rule is on; the ticket outputs moved to aux numbers out of its way |
 | solenoids 15, 16, 12 | flipper coils | follow their button while the rule is on, as the SAM CPU does |
 | lamps 101-103 / 104-106 | Tron ramp tubes (blue, green, red) | PinMAME's SAM_GAME_TRON numbering of strobe 0x10 / 0x20, reported 0-255 for `RGB()`; 0 on a Pro unless fiber optics are enabled |
-| GI | none | MPF does not drive the GI relay; the table turns its GI on |
+| GI | none | MPF does not drive the GI relay; Tron's table turns its GI on by itself. A table whose GI follows `GiCallBack2` (Transformers' `GI_PWM`) stays dark unless `ChangedGIStrings` reports a string: report string 0 = 255 once (section 4a) |
 
 Coin door open: every solenoid but 24 reads 0 and solenoid 33 is off, as the ROM masks its outputs while the
 interlock is open (IO interrupt 0x12070 writes shadow & mask 0x3b984 while RAM 0x3727c & 3 != 3).
@@ -74,11 +79,51 @@ The ball devices count the table's own trough (18-21), shooter lane (23) and VUK
    wpc.vbs ...), whether it uses modulated solenoids, fast flips, ball stacks or `cvpmTrough`.
 3. Map every switch, coil, flasher, lamp and GI string to the MPF config's numbers and names; renumber only
    what PinMAME numbers differently (dedicated switches, extra outputs above the ROM's range).
-4. Generalise what is Tron-specific in `vpx_bridge.py` (ProgID `TronMPF.Controller`, env names) and
-   `vpx_hardware.py` (tube lamps, coin door mask) before reusing them.
+4. Copy Transformers' files, not Tron's: `scripts/vpx_bridge.py` (constants `GAME`, `PROGID`, a new `CLSID`
+   from `uuid4()` so both bridges can stay registered, `ENV` for the environment variable prefix, `ROM_NAME`),
+   `game/tf/vpx_hardware.py` (constants `FLIPPER_COILS`, `FLIPPERS_ON_SOLENOID`, `MAX_SOLENOID`,
+   `POWERED_WITH_DOOR_OPEN`, `GI_STRINGS`), `scripts/vpx_table.py` (`REPO`, `MARKER`), `game/config/hw_vpx.yaml`
+   and `tests/test_vpx.py` + `tests/machine_vpx.yaml`. Then change only the constants and the overlay's numbers.
+   On Transformers that took the whole bridge with no other code change (verified: 36 tests, `--check` live).
 5. Check the MPF config repo is reachable before mapping (a stale local copy maps wrong numbers).
 6. Hand the set-up steps (bridge packages, COM registration, the table's `.vbs`) to the
    [packaging agent](packaging.md), which puts them in the Windows installer's `-Vpx` option.
+
+## 4a. What bit on Transformers (true of any SAM table)
+
+- **`UseVPMModSol = 2`** (physical outputs, common in recent VPW and VR tables): core.vbs then sets
+  `Controller.SolMask(2) = 2` and divides solenoids, lamps **and** GI by 255. The bridge must report lamps 0-255
+  and GI 0-255 in that mode, and 0/1 lamps and 0-8 GI otherwise; it keeps the `SolMask(2)` the table wrote and
+  converts (Transformers `vpx_bridge.py` `physical()`). A bridge that always sends 0/1 lamps leaves them at
+  1/255: dark. (code: core.vbs, VPX tag v10.8.1; verified in `tests/test_vpx.py`)
+- **GI**: grep the script for `GiCallBack`/`GiCallBack2`. If it has one, the adapter reports a GI string (MPF has
+  no GI output on SAM). (code: Transformers v2.4 `GI_PWM`)
+- **Animation-only solenoid callbacks**: Transformers' `solLSling` / `solRSling` and the bumper callbacks only move
+  the arms and play the sounds; the table's own objects kick the ball. MPF fires nothing on a sling unless told,
+  so the overlay adds `autofire_coils` for slings and pops, disabled at ball end, tilt and in the service menu,
+  and the adapter pulses an autofire rule's coil when its switch closes. Tron had none of this. (code: v2.4 script)
+- **DMD**: with `UseVPMDMD` the table reads `RawDmdPixels` every frame; return Empty (None), with
+  `RawDmdWidth` 128 / `RawDmdHeight` 32, and the table's DMD stays empty without errors; Godot's window is the DMD.
+- **Trough jam**: `SolTrough` pulses the jam switch (22) on every eject; MPF's trough takes it in its stride
+  (verified in a test that pulses it).
+- **Coin door key**: VPinMAME's `keyCoinDoor` is End (DIK 207); `keyFront` is key 2 (tournament start on SAM).
+  vpx_table.py's KeyDown line uses 207 and runs before `vpmKeyDown`.
+- **pywin32 property put**: `Controller.Switch(n) = v` calls `SetSwitch(n, v)`; every indexed property the table
+  writes (`Switch`, `SolMask`, `Dip`, `Mech`) needs a `Set<Name>(args, value)` method.
+- **VPX's core scripts** (core.vbs, sam.vbs, controller.vbs) to read in the cloud: fetch them from a vpinball
+  release tag (`github.com/vpinball/vpinball/raw/v10.8.1-5436-af26b2d93/scripts/core.vbs`); `master/scripts/`
+  answers 404.
+
+### Testing in the cloud (no Windows)
+
+- `vpx_bridge.py --check` is the bridge's client without COM: it starts `run.py --hw vpx`, loads the trough, starts
+  a game and reads back the outputs. Headless, MPF waits forever at reset unless a GMC answers: MPF's
+  `machine_reset_phase_1` waits for `reset_complete` from every display BCP client. Run Godot (`run.py` does,
+  under Xvfb), or a 20-line fake GMC on 5050 that answers `hello` with `hello` and `reset` with
+  `reset_complete`. (verified on Transformers)
+- Stop the game by PID: `pkill -f "mpf game"` matches the shell running it too and kills the session's command.
+- Unit tests: drive the platform's `vpx_*` methods the way the `vpcom_bridge` BCP handler does, and poll
+  `changed_solenoids` between steps as the table does every frame, or a pulse that ended is counted twice.
 
 ## 5. Open items per game
 
@@ -86,4 +131,5 @@ On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://git
 starting with the owner's Windows test.
 
 Keep this file current with every generic fix; owner test results go on the game page. Last updated 2026-10-10
-(moved to Stern-SAM-Decryption; Tron status and open items to the Tron game page).
+(moved to Stern-SAM-Decryption; Tron status and open items to the Tron game page; Transformers: generic bridge,
+physical outputs, GI, autofire, cloud testing).
