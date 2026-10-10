@@ -22,7 +22,7 @@ Paths in `code` are Tron-Legacy-MPF-PuP's unless said otherwise.
 |---|---|
 | The pack: **the zip its author publishes** (or a private copy, section 2) and its author's name and download page | A game repo (or fork) that plays the pack on its own windows, with the game unchanged when the pack is off |
 | C's game repo: its display effect events, switch names, sound tracks | The pack decoded: `pup_decode.py decode` JSON, and a human page (Tron: Tron-LE-PuP-Pack `docs/decoding/`) |
-| The owner's screens: backglass, a large DMD/LCD, a topper, which are optional | The trigger map (`game/<game>_pup/trigger_map.yaml`) and its match report (`docs/pup_captures.md`) |
+| The owner's screens: backglass, a large DMD/LCD, a topper, which are optional | The trigger map (`game/<game>_pup/trigger_map.yaml`) and its match report (`docs/pup/captures.md`) |
 | | Install and setup taking the pack from its zip, crediting its author; per-cabinet screen settings |
 
 ## 2. Where the pack comes from: its author's zip (credit the author)
@@ -33,7 +33,7 @@ interest), and the game's repositories never redistribute it.
 
 1. **Ship the zip option, always**, in setup and in every installer, even when the project keeps its own copy.
    Tron (verified 2026-10-10 with a zip of the real pack): `TRON_PUP_ZIP=<zip file or https URL>` for
-   `setup.py` and the one-line installers, or `--pup-zip FILE` (macOS / Linux installers, `scripts/pup_setup.py`),
+   `setup.py` and the one-line installers, or `--pup-zip FILE` (macOS / Linux installers, `scripts/pup/pup_setup.py`),
    `-PupZip FILE` (Windows installer). `pup_setup.py` finds the folder holding `triggers.pup` at any depth in
    the zip (`PUPVideos/<romset>/`), extracts it into the pack folder, and stamps it with the zip's SHA-256 so the
    same zip is not extracted twice; with a zip the installers don't ask for access to the pack's repository.
@@ -86,7 +86,7 @@ Screens 2 and 12 (backglass underlay and top layer), 13 and 14 (topper, `off` in
    its own events), unused captures, conditions on event arguments.
 4. **Switches by name** (`switches: {n: s_name}`); **lamp terms and multi-term rows as overrides** (`override:
    {row ID: [events]}`): PinMAME's lamp numbers are not the SAM lamp matrix's (Tron `L35`).
-5. Keep the game's own matcher in the game repo (Tron: `scripts/pup_captures.py` writes `docs/pup_captures.md`
+5. Keep the game's own matcher in the game repo (Tron: `scripts/pup/pup_captures.py` writes `docs/pup/captures.md`
    and marks **check** where the mapped effect no longer draws the capture) and run it after every sync with
    the upstream game.
 
@@ -110,7 +110,7 @@ Screens 2 and 12 (backglass underlay and top layer), 13 and 14 (topper, `off` in
 
 ## 6. Video playback per platform
 
-Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup.md` and `docs/jetson.md`):
+Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/jetson/README.md`):
 
 | Platform | Player | Note |
 |---|---|---|
@@ -126,6 +126,20 @@ Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pu
 - `setup.py` runs the PuP step after the game's media: fetch or extract the pack (section 2), install the video
   add-on for the platform, convert or list the videos, print the status line.
 - Every installer gets the zip option and passes it on; the [packaging agent](packaging.md) owns the installers.
+- **The fork's own files in their own folders** (Tron: `scripts/pup/`, `docs/pup/`, `docs/jetson/`, `game/pup/`,
+  `game/tron_pup/`), marked as the fork's in the README's folder tree, so a reader and a merge both see what is
+  upstream's. (code, Tron-Legacy-MPF-PuP PR #16)
+- **Never move a folder something outside the repository links to**: filed upstream issues link to their test
+  programs and patches, and the one-line installers are fetched by URL (Tron: `scripts/gozen/`,
+  `scripts/install/`, `pup_addons/`, `docs/upstream_issues/` stay where they are). A pull that empties a folder
+  leaves it behind: `scripts/clean_tree.py` lists and removes them, and the sync runs it. (code)
+- **Fix the game in the game repo, not in the fork.** A platform fix made in the fork and again upstream
+  conflicts at the next sync: Tron's Xavier NX work landed in both (upstream PR #35), and the following sync
+  conflicted in 10 files (`run.py`, `gen_media.py`, `dmd_mode.gd`, the Docker env, two test files). Port the fix
+  upstream first and let the fork take it by sync; keep in the fork only what exists for the pack. (observed,
+  trial merge 2026-10-10)
+- **The game's instructions for Claude come from upstream too** (`CLAUDE.md` loading the game page): the fork
+  adds lines for the pack (agent G, its own folders) and keeps upstream's text, so the sync merges it.
 
 ## 8. Learned so far
 
@@ -134,7 +148,7 @@ Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pu
 - Topper screens are often `off` in the shipped option set; turn them on in the game's settings, not in the pack.
 - Linux needs X11 (not Wayland) for one window per monitor; a cabinet needs screen blanking off and autologin.
 - Several screens switching videos at once, and video work on Godot's main thread, froze ARM boards: decode
-  off the main thread at the size the window shows (Tron-Legacy-MPF-PuP `docs/jetson.md`).
+  off the main thread at the size the window shows (Tron-Legacy-MPF-PuP `docs/jetson/README.md`).
 
 ## 9. Status per game
 
@@ -142,5 +156,6 @@ Godot plays only Theora. Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pu
 |---|---|---|---|
 | Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the fork's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF-PuP](https://github.com/Ashram56/Tron-Legacy-MPF-PuP) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers |
 
-Keep this file current. Last updated 2026-10-10 (new: the PuP Pack agent, the format page and `tools/pup/`,
+Keep this file current. Last updated 2026-10-10 (fork layout and sync lessons, paths after the fork's folder move;
+before: the PuP Pack agent, the format page and `tools/pup/`,
 from the Tron work in Tron-Legacy-MPF-PuP and Tron-LE-PuP-Pack).
