@@ -89,6 +89,10 @@ soon as the game repo exists:
    pywin32), registers the COM server elevated (`Start-Process ... -Verb RunAs -Wait`, then check the exit
    code; the rest of the script stays unelevated), and with `-Table <path>` writes the table's `.vbs` with
    `vpx_table.py` (the `.vpx` itself is never changed). The final notes add the `run.py --hw vpx` line.
+   `-Table` is a string parameter next to the `ValueFromRemainingArguments` pass-through, so the script needs
+   `[CmdletBinding(PositionalBinding = $false)]`: without it, in the one line's `& ([scriptblock]::Create(...))`
+   form, a bare extra argument binds to `-Table` (verified with pwsh 7.4 on Linux; a `-File` run did not show it).
+   Dry-run the published one line with pwsh on Linux (the linux-x64 tarball runs from the scratchpad).
 5. Run every installer with its dry-run option and the tests; on Windows, ask the owner to run the one line
    (`-DryRun` first) and report the output.
 
