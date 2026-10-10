@@ -106,6 +106,16 @@ The ball devices count the table's own trough (18-21), shooter lane (23) and VUK
   `RawDmdWidth` 128 / `RawDmdHeight` 32, and the table's DMD stays empty without errors; Godot's window is the DMD.
 - **Trough jam**: `SolTrough` pulses the jam switch (22) on every eject; MPF's trough takes it in its stride
   (verified in a test that pulses it).
+- **Scoops and VUKs as `cvpmBallStack`** (Tron `bsRHole`, `InitSw 0, 11, ...`): the stack holds any number of
+  balls behind its one switch, so a second ball entering while one is held gives no switch edge. The ROM
+  rules never see that scoop entry (no scoop award), and MPF's one-switch device counts 1. When MPF ejects, the
+  switch stays on, MPF retries the eject, and the second ball comes out. `game.balls_in_play` stays right
+  (drains are counted in the trough), but the second ball's scoop shot is lost. A real scoop rejects the
+  second ball. (code: Tron VPW Mod v1.1 table script; reproduced in Tron `tests/test_ball_tracking.py`)
+- **Stuck balls**: VPX strands balls where a real machine would not. After the ROM's lost ball recovery
+  (PINBALL MISSING) serves a replacement, a stuck ball that comes free ends the ball early. That is the ROM's
+  behaviour ([playbook](../knowledge/sam_to_mpf_playbook.md), "SAM ball counting"), so ask the owner about it
+  before adding a departure.
 - **Coin door key**: VPinMAME's `keyCoinDoor` is End (DIK 207); `keyFront` is key 2 (tournament start on SAM).
   vpx_table.py's KeyDown line uses 207 and runs before `vpmKeyDown`.
 - **pywin32 property put**: `Controller.Switch(n) = v` calls `SetSwitch(n, v)`; every indexed property the table
@@ -132,4 +142,4 @@ starting with the owner's Windows test.
 
 Keep this file current with every generic fix; owner test results go on the game page. Last updated 2026-10-10
 (moved to Stern-SAM-Decryption; Tron status and open items to the Tron game page; Transformers: generic bridge,
-physical outputs, GI, autofire, cloud testing).
+physical outputs, GI, autofire, cloud testing; Tron: scoop ball stacks, stuck balls).
