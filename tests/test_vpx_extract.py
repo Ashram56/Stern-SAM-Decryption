@@ -136,3 +136,21 @@ def test_map_reads_vpw_trough_targets_and_flupper_domes(tmp_path):
     assert sw[18]["vpx"] == "BallRelease" and sw[3]["vpx"] == "sw3" and sw[37]["vpx"] == "sw37"
     li = {(r["kind"], int(r["number"])): r["vpx"] for r in csv.DictReader(open(tmp_path / "lights.csv"))}
     assert li == {("lamp", 5): "li5", ("flasher", 17): "f17", ("flasher", 26): "Flasherlight1"}
+
+
+def test_cabinet_strip_places_unplaced_switches_and_off_picture_lamps(tmp_path):
+    items = [{"type": "Trigger", "name": "sw23", "x": 1.0, "y": 2.0, "nx": 0.9, "ny": 0.88},
+             {"type": "Light", "name": "li1", "x": 1.0, "y": 2.0, "nx": 0.07, "ny": 1.03, "timer_interval": 1}]
+    (tmp_path / "items.json").write_text(json.dumps({"items": items}))
+    (tmp_path / "script.vbs").write_bytes(b"Sub sw23_Hit:Controller.Switch(23) = 1:End Sub\nvpmMapLights AllLamps\n")
+    cfg = tmp_path / "switches.yaml"
+    cfg.write_text("switches:\n  s_shooter_lane:\n    number: 23\n  s_start_button:\n    number: 16\n"
+                   "  s_l_flipper_button:\n    number: 137\n  s_coin_door_open:\n    number: D20\n")
+    vpx_map.main([str(tmp_path), "--names", str(cfg), "--cabinet"])
+    sw = {r["mpf_name"]: r for r in csv.DictReader(open(tmp_path / "switches.csv"))}
+    assert set(sw) == {"s_shooter_lane", "s_start_button", "s_l_flipper_button", "s_coin_door_open"}
+    assert sw["s_shooter_lane"]["type"] == "Trigger" and sw["s_coin_door_open"]["number"] == "148"
+    assert all(sw[n]["type"] == "cabinet" and 0 < float(sw[n]["ny"]) < 1
+               for n in ("s_start_button", "s_l_flipper_button", "s_coin_door_open"))
+    li = next(csv.DictReader(open(tmp_path / "lights.csv")))
+    assert 0 < float(li["ny"]) < 1 and "cabinet strip" in li["note"]
