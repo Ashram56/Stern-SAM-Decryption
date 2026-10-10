@@ -25,7 +25,11 @@ A table that uses other patterns (Controller.Switch set from a sub named after s
 here: read script.vbs first. Mechanism switches have no playfield object of their own; place them
 with --mech NUMBER:OBJECT (only if the number is still unmapped).
 
---names reads MPF config files (switches:, lights:, coils:, flashers: with number:) and names each device by its number;
+--cabinet places the config's switches that have no playfield object (start, flipper buttons, coin door, tilt) and
+the lamps off the picture on a strip along the bottom edge, so MPF Monitor can show and press them.
+
+--names reads MPF config files (switches:, lights:, coils:, flashers: with number:; D<n> counts as 128 + n)
+and names each device by its number;
 without it the names are placeholders s_NN_<vpx>, l_NN_<vpx>, f_NN_<vpx>. Writes switches.csv, lights.csv,
 monitor.yaml (MPF Monitor's own format: singular section keys, x/y as fractions of the picture), overlay.png
 and overlay_small.png. agents/vpx_extraction.md has the whole procedure.
@@ -73,16 +77,37 @@ def read_names(paths):
                 if m:
                     dev = m.group(1)
                     continue
-                m = re.match(r"^    number:\s*['\"]?(-?\d+)['\"]?", line)
-                if m and section in names and dev:
-                    names[section].setdefault(int(m.group(1)), dev)
+                m = re.match(r"^    number:\s*['\"]?(D?)(-?\d+)['\"]?", line)
+                if m and section in names and dev:      # D<n>: a SAM dedicated switch, numbered 128 + n
+                    names[section].setdefault(int(m.group(2)) + (128 if m.group(1) else 0), dev)
     return names
+
+
+def cabinet_strip(sw_rows, li_rows, config_switches, per_row=9):
+    """Cabinet switches (start, flipper buttons and EOS, coin door, tilt) have no playfield object, so MPF Monitor
+    would never show them: give every config switch still unplaced a spot on a strip along the bottom edge (rows
+    of `per_row`, by number), and move lamps that sit off the picture (start button lamps below the apron) into a
+    row just above it."""
+    placed = {r["number"] for r in sw_rows}
+    extra = [(n, config_switches[n]) for n in sorted(config_switches) if n not in placed]
+    rows = (len(extra) + per_row - 1) // per_row
+    for k, (n, name) in enumerate(extra):
+        sw_rows.append(dict(number=n, mpf_name=name, vpx="", type="cabinet", x="", y="",
+                            nx=round(0.05 + 0.1 * (k % per_row), 4), ny=round(0.985 - 0.03 * (k // per_row), 4),
+                            note="no playfield object: cabinet strip"))
+    off = [r for r in li_rows if not 0 <= r["ny"] <= 1]
+    for k, r in enumerate(off):
+        r["note"] = (r["note"] + "; " if r["note"] else "") + "off the picture (ny {}): cabinet strip".format(r["ny"])
+        r["nx"], r["ny"] = round(0.05 + 0.1 * (k % per_row), 4), round(0.985 - 0.03 * (rows + k // per_row), 4)
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("outdir")
     ap.add_argument("--names", nargs="*", default=[], help="MPF config files with switches/lights/coils numbers")
+    ap.add_argument("--cabinet", action="store_true",
+                    help="put the config's switches with no playfield object (buttons, coin door, tilt, EOS) and the"
+                         " lamps placed off the picture on a strip along the playfield's bottom edge")
     ap.add_argument("--mech", default="",
                     help="NUMBER:OBJECT,... switches placed at an object (mechanisms, trough jam)")
     args = ap.parse_args(argv)
@@ -201,6 +226,9 @@ def main(argv=None):
             li_rows.append(dict(number=n, mpf_name=mpf, vpx=it["name"], kind=kind, type=it["type"],
                                 x=round(it["x"], 1), y=round(it["y"], 1), nx=it["nx"], ny=it["ny"],
                                 note="also: " + " ".join(others) if others else ""))
+
+    if args.cabinet:
+        cabinet_strip(sw_rows, li_rows, names["switches"])
 
     cols = ["number", "mpf_name", "vpx", "type", "x", "y", "nx", "ny", "note"]
     for fn, rows, c in (("switches.csv", sw_rows, cols), ("lights.csv", li_rows, cols[:3] + ["kind"] + cols[3:])):
