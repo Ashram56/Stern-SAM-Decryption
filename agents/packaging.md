@@ -32,7 +32,7 @@ then carries it into every installer, the one-line commands, Docker, CI and the 
 | `docker/` | Linux alternative: one image, compose services (setup, godot, mpf, monitor), overlays for GPU, audio, P-ROC; `docker/tron.sh` |
 | `.github/workflows/test.yml` | CI on Windows, macOS and Linux: `setup.py`, `pytest`, render check on Linux; pushes to `main` only |
 | `tests/test_install.py`, `tests/test_toolchain.py` | installers in `--dry-run`, standalone clone, private-repo token flow, Docker plans, toolchain paths, `run.py` arguments |
-| Docs: README "Install" and "Play", `docs/requirements.md`, `docs/development.md` "Getting started", `docker/README.md`, the set-up parts of `docs/vpx.md` and `docs/hardware.md` (P-ROC driver) | what the owner reads to install and start the game |
+| Docs: the whole README (section 3, item 7), `docs/requirements.md`, `docs/development.md` "Getting started", `docker/README.md`, the set-up parts of `docs/vpx.md` and `docs/hardware.md` (P-ROC driver) | what the owner reads to install and start the game |
 
 ## 2. Inputs
 
@@ -69,7 +69,19 @@ then carries it into every installer, the one-line commands, Docker, CI and the 
    folder), `<P>_BRANCH`, `<P>_REPO`, `<P>_ASSETS_REPO` when there is a second repository, `<P>_GITHUB_TOKEN`.
 6. **Tests**: every installer runs in its dry-run mode in `tests/test_install.py` (Linux families, macOS plan,
    standalone clone, branch gone, token flow); `pytest -q tests` green before pushing.
-7. **Docs** say the one line, the run command, the options and the requirements, in the owner's words.
+7. **A full README** at the game repo's root, the player's front page, owned by this agent (Tron's
+   [README.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/README.md) is the model; Transformers-MPF's
+   follows it). In this order: what the game is (game, model, ROM version, MPF / GMC / Godot versions, the
+   platforms) and a pointer to the master plan; **Install** (the one line per platform, Windows with VPX when
+   D's bridge exists; folder, branch, token and pack-zip settings; the options; clone-first fallback);
+   **Play** (the run command per platform and target, free play, the key table from `gmc.cfg`); **Settings**
+   (every `run.py` option and environment override); optional parts (PuP Pack with its author named, VPX);
+   the status table; **Update**; **Tests**; **More** (links to every doc in `docs/`, the asset package);
+   **Credits** (the manufacturer, pack and table authors, MPF, Godot). Plus `docs/requirements.md` per OS. A
+   game's README that is only a status page is not done: on Transformers it had no macOS / Linux line and no
+   Play or Settings section until the owner asked (2026-10-10).
+8. **Docs** say the one line, the run command, the options and the requirements, in the owner's words, and are
+   updated in the same change as any installer or `run.py` option.
 
 ## 4. Porting the kit to a new game
 
@@ -84,7 +96,10 @@ soon as the game repo exists:
    is none), the banner text, the short-path hint (`C:\tron`), the Docker image and service names, the COM
    ProgID (`TronMPF.Controller`).
 3. **Default branch**: a repository without `main` yet (Transformers, during the build) needs the working
-   branch as the default and in the raw URL of the one line; switch both to `main` once it exists.
+   branch as the default and in the raw URL of the one line; switch both to `main` once it exists (Transformers:
+   2026-10-10, together with `docs/vpx.md`'s line). Also set `main` as the GitHub default branch (Settings >
+   General): only the owner can, and until then `raw.githubusercontent.com/<repo>/HEAD/...` and the repo page
+   show the old branch.
 4. **VPX set-up on Windows** (Transformers, worth porting back to Tron): `-Vpx` runs `setup.py --vpx` (olefile,
    pywin32), registers the COM server elevated (`Start-Process ... -Verb RunAs -Wait`, then check the exit
    code; the rest of the script stays unelevated), and with `-Table <path>` writes the table's `.vbs` with
@@ -103,6 +118,15 @@ soon as the game repo exists:
   in the environment, inherited by `setup.py`), and hand it to the credential helper for later pulls. Never
   open Git Credential Manager's window. A private repository answers 404 to `curl`/`irm` without a token, so
   the one line cannot fetch itself: document clone-then-run for that case.
+- **A private pack repository next to a public game**: when the only private repository is an optional one
+  (Transformers: the PuP Pack's submodule, the owner's copy), the token step must not stop the install. With no
+  token, `--yes`, an empty answer or a token that cannot read it, say the game installs without that part and
+  go on; skip the check entirely when the pack comes from its zip (`<P>_PUP_ZIP`) or is off (`<P>_PUP=0`).
+  `setup.py` must already treat a failed submodule fetch as "without the PuP", not an error. Test each case in
+  `test_install.py` (Transformers-MPF's `test_github_auth`).
+- **Run this agent, not only its file**: on Transformers the packaging thread wrote this file but the kit was
+  never ported (only the Windows installer existed, from the VPX bridge thread) until the owner asked for the
+  README. The coordinator starts F on the game as soon as C boots, per the master plan's section 3.
 - **Windows PowerShell 5.1** turns a native command's stderr into a terminating error under
   `$ErrorActionPreference = 'Stop'`: run git quietly and test `$LASTEXITCODE` only.
 - **Never the bare `python` on Windows**: on a fresh install it is the Microsoft Store stub. Use the `py`
@@ -178,5 +202,5 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-10 (GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-10 (the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
