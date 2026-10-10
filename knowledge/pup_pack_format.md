@@ -66,7 +66,7 @@ RestSeconds, Loop, Defaults`. Rows with no `Trigger` (titled `**** ... ****`) ar
 | `PlayFile` / `PlayList` | that file of the playlist, or (empty file) the playlist's next file |
 | `Priority` | a play replaces what runs on that screen when its priority is >= the running one, else it is dropped |
 | `RestSeconds` | after firing, the row ignores its trigger for that long |
-| `Loop` | empty: once; `Loop`: until replaced or stopped; `SetBG`: becomes the screen's background; `StopFile`: stop that file; `StopPlayer`: stop the screen; `SkipSamePrty`: drop the play if the running one has the same priority |
+| `Loop` | empty: once; `Loop`: until replaced or stopped; `SetBG`: becomes the screen's background and plays now when its priority is >= the running video's, a looping one included (inferred from the pack: Transformers ends its looping CHOOSE YOUR SIDE box, priority 3, with SetBG rows at priority 4 when the side is chosen; kept up, the box never left); `StopFile`: stop that file; `StopPlayer`: stop the screen; `SkipSamePrty`: drop the play if the running one has the same priority |
 | `Volume`, `Length` | volume override (100 = normal); play time cap in seconds |
 
 When a video ends, the screen's background comes back. (code)
