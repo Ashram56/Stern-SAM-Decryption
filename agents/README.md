@@ -69,6 +69,7 @@ else read from GitHub). The same holds in a cloud session that has the repositor
 | A Windows PC with VPX | Testing the VPX bridge and the Windows installer (VPX runs only on Windows) | For the bridge | Run the checks the bridge and packaging agents list, or allow Remote Control on a folder. |
 | Optional: operator manual, switch/lamp matrix | Cross-checking IO numbers | No | Attach the PDF to the kickoff message or a later one. |
 | Optional: schematics, logic analyzer captures | Hardware work (P-ROC, replacement boards) | No | Attach them; say which ROM the machine ran when captured. |
+| Optional: a PuP Pack (PinUP Player videos and music for the game) | The [PuP Pack agent](pup_pack.md) | No | The zip its author publishes, with the author's name and download page; players install it from that zip (the agent's section 2). A private copy only in a private repo. |
 | Optional: third-party media (videos, colourisation files) | Improvements only | No | Private repo only; never named or described in the public game repo. |
 | Your decisions | Model, defaults, look and feel | As they come up | Agents pick sensible defaults, say which, and ask only for what they cannot decide. |
 
@@ -82,11 +83,13 @@ else read from GitHub). The same holds in a cloud session that has the repositor
 | D | **VPX bridge** (work in progress) | [vpx_bridge.md](vpx_bridge.md) | C's game, B's table script | VPX plays the ball, MPF replaces PinMAME and the ROM |
 | E | **Improvements** (optional) | [improvement.md](improvement.md) | C's game | Switchable departures: HD DMD, clean fonts, colour, new modes; the ROM's behaviour stays one option away |
 | F | **Packaging** | [packaging.md](packaging.md) | C's game repo, the owner's hardware line, D's and E's options | One line to install and one command to run on Windows, macOS and Linux (installers, `setup.py`, `run.py`, toolchain pins, Docker, CI), with every hardware option (MPF Monitor, P-ROC, VPX) |
+| G | **PuP Pack** (optional) | [pup_pack.md](pup_pack.md) | C's game, a PuP Pack zip from its author | The pack's videos and music on the game's extra screens (backglass, LCD DMD, topper) at PinUP Player's moments; installed from the author's zip |
 
 The knowledge base the agents share (not agents themselves), in [`knowledge/`](../knowledge/README.md):
 [sam_to_mpf_playbook.md](../knowledge/sam_to_mpf_playbook.md) (how C builds),
 [dmd_hd_upscaling.md](../knowledge/dmd_hd_upscaling.md) (how E's HD display works),
-[rom_decomp_feedback.md](../knowledge/rom_decomp_feedback.md) (what C needed from A). Per game, in the game
+[rom_decomp_feedback.md](../knowledge/rom_decomp_feedback.md) (what C needed from A),
+[pup_pack_format.md](../knowledge/pup_pack_format.md) (how G reads a PuP Pack). Per game, in the game
 repo: `docs/rom_differences.md` (every departure from the ROM; Tron: [rom_differences.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/rom_differences.md))
 and the players' set-up pages (Tron: [vpx.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/vpx.md)).
 
@@ -107,6 +110,8 @@ ROM ──► A ROM extraction ──► C strict recreation ──► E improve
    once, so the owner can install and test from the first playable build. F runs again whenever C, D or E add
    an option (P-ROC, VPX set-up, display modes), so each one reaches every installer and platform.
 4. **D** once C boots a game on virtual hardware. **E** any time after C's display works, always switchable.
+   **G** (a PuP Pack) any time after C's display posts its effect events; F then adds the pack's zip option to
+   every installer.
 5. Every new ROM version or model: A again (A's section 15 ports a second model), then C's asset sync.
 
 ## 4. Starting the agents
@@ -126,6 +131,7 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
 | D | "Act as the VPX bridge agent (agents/vpx_bridge.md) for `<game repo>`; the table is `<table.vpx>`." |
 | E | "Act as the improvement agent (agents/improvement.md) for `<game repo>`: `<what to improve>`." |
 | F | "Act as the packaging agent (agents/packaging.md) for `<game repo>`: one-line install and run on `<platforms>`, with `<options: MPF Monitor, P-ROC, VPX>`." |
+| G | "Act as the PuP Pack agent (agents/pup_pack.md) for `<game repo>`: the pack is `<zip or link>` by `<author>`; screens `<backglass, DMD, topper>`." |
 
 ## 5. Rules every agent follows
 
@@ -161,5 +167,5 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
 | Tron Legacy LE 1.74 / Pro 1.74 (worked example) | [Tron-Legacy-LE-ROM-Decryption](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption) | [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) | [docs/agents/README.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md) |
 | Transformers Pro 1.80 | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `rom/` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) | `CLAUDE.md` and `README.md` there |
 
-Add a row when a new game starts. Last updated 2026-10-10 (contribution rule: CONTRIBUTING.md; moved here from Tron-Legacy-MPF with the knowledge
+Add a row when a new game starts. Last updated 2026-10-10 (agent G, PuP Pack; contribution rule: CONTRIBUTING.md; moved here from Tron-Legacy-MPF with the knowledge
 base and the ROM extraction agent).
