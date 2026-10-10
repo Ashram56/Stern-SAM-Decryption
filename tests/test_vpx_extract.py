@@ -154,3 +154,16 @@ def test_cabinet_strip_places_unplaced_switches_and_off_picture_lamps(tmp_path):
                for n in ("s_start_button", "s_l_flipper_button", "s_coin_door_open"))
     li = next(csv.DictReader(open(tmp_path / "lights.csv")))
     assert 0 < float(li["ny"]) < 1 and "cabinet strip" in li["note"]
+
+
+def test_cabinet_strip_puts_flipper_buttons_under_their_side():
+    sw_rows = []
+    names = {16: "s_start_button", 137: "s_l_flipper_button", 138: "s_left_flipper_e_o_s",
+             139: "s_r_flipper_button", 140: "s_right_flipper_e_o_s", 152: "s_select"}
+    vpx_map.cabinet_strip(sw_rows, [], names)
+    pos = {r["mpf_name"]: (r["nx"], r["ny"]) for r in sw_rows}
+    bottom = pos["s_l_flipper_button"][1]
+    assert pos["s_l_flipper_button"][0] < 0.3 and pos["s_left_flipper_e_o_s"][0] < 0.3
+    assert pos["s_r_flipper_button"][0] > 0.6 and pos["s_right_flipper_e_o_s"][0] > 0.6
+    assert pos["s_r_flipper_button"][1] == bottom and len(set(pos.values())) == len(pos)
+    assert vpx_map.flipper_side("s_flipper_lower_right") == "right" and vpx_map.flipper_side("s_start_button") is None

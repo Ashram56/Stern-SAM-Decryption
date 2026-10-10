@@ -83,15 +83,39 @@ def read_names(paths):
     return names
 
 
+def flipper_side(name):
+    """"left" / "right" for a flipper button or EOS switch name (s_l_flipper_button, s_left_flipper_e_o_s,
+    s_flipper_lower_right ...), else None."""
+    n = name.lower()
+    if "flipper" not in n:
+        return None
+    words = set(re.split(r"[^a-z]+", n))
+    if words & {"l", "left", "ll", "ul"}:
+        return "left"
+    if words & {"r", "right", "lr", "ur"}:
+        return "right"
+    return None
+
+
 def cabinet_strip(sw_rows, li_rows, config_switches, per_row=9):
     """Cabinet switches (start, flipper buttons and EOS, coin door, tilt) have no playfield object, so MPF Monitor
     would never show them: give every config switch still unplaced a spot on a strip along the bottom edge (rows
-    of `per_row`, by number), and move lamps that sit off the picture (start button lamps below the apron) into a
-    row just above it."""
+    of `per_row`), and move lamps that sit off the picture (start button lamps below the apron) into a row just
+    above it. Left flipper switches take the bottom row's left end and right flipper switches its right end, under
+    their flippers; the rest fill the slots between and the rows above, by number."""
     placed = {r["number"] for r in sw_rows}
     extra = [(n, config_switches[n]) for n in sorted(config_switches) if n not in placed]
     rows = (len(extra) + per_row - 1) // per_row
-    for k, (n, name) in enumerate(extra):
+    left = [e for e in extra if flipper_side(e[1]) == "left"][:per_row // 2]
+    right = [e for e in extra if flipper_side(e[1]) == "right"][:per_row // 2]
+    slot = {e: k for k, e in enumerate(left)}
+    slot.update({e: per_row - 1 - k for k, e in enumerate(right)})     # mirrored: buttons outermost
+    free = [k for k in range(rows * per_row) if k not in slot.values()]
+    for e in extra:
+        if e not in slot:
+            slot[e] = free.pop(0)
+    for n, name in extra:
+        k = slot[(n, name)]
         sw_rows.append(dict(number=n, mpf_name=name, vpx="", type="cabinet", x="", y="",
                             nx=round(0.05 + 0.1 * (k % per_row), 4), ny=round(0.985 - 0.03 * (k // per_row), 4),
                             note="no playfield object: cabinet strip"))

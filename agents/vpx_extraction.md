@@ -160,8 +160,10 @@ can be wrong (Transformers' "Slingshot (Left)" dome sits on the right): trust th
 Expected gaps: the **trough** has no playfield objects (simulated ball stacks), so its switches sit stacked
 at the ball release; **cabinet switches** (start and tournament buttons, flipper buttons and EOS, launch, coin
 slots, tilt, slam tilt, coin door, the service buttons) have no object: `--cabinet` puts every config switch
-still unplaced on a strip along the picture's bottom edge (rows of 9 by number, y 0.985 upward), where the
-apron leaves room on SAM tables; some **lamp objects sit below the playfield** (apron, start buttons):
+still unplaced on a strip along the picture's bottom edge (rows of 9, y 0.985 upward), where the apron leaves
+room on SAM tables. Left flipper button and EOS take the bottom row's left corner and the right ones its right
+corner, buttons outermost; the rest fill the slots between, by number (filling by number alone put the left
+button on the right on Transformers, and the owner flagged it); some **lamp objects sit below the playfield** (apron, start buttons):
 `--cabinet` moves lamps off the picture to a row just above the strip; some manual lamp numbers have no object
 (`vpx_map.py` prints them). Cross-check numbers against the manual's matrix where you can.
 
@@ -205,5 +207,7 @@ made, what went on the cabinet strip, and the overlay verdict. List what needs t
 
 - 2026-10-10: `--cabinet` (cabinet switches and off-picture lamps on a bottom strip) and `D<n>` numbers in
   `--names`, after the Transformers owner found no start, flipper or service buttons in MPF Monitor.
+
+- 2026-10-10: flipper buttons and EOS on their own side of the cabinet strip.
 
 Last updated 2026-10-10.
