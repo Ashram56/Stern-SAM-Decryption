@@ -184,6 +184,18 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
 - Most of a pack's captures can be the variants of one effect (Transformers: every battle shot, side, lock and
   wizard shot): map them with conditions on the event's arguments and the player's state (section 4,
   knowledge doc section 6), adding the argument to the game's call when it is missing.
+- **Variants come from the ROM's animation tables, never from the pack's row order** (code, Transformers 1.80).
+  An effect with one capture per shot, lock or jackpot draws from a table of animation functions; read the
+  index in the deff (`(**(code **)(&DAT_040cXXXX + idx*4))()`, each function `FUN_0102ff60(first_image, last,
+  ...)`) and in the function that starts it (what it stores in the task's `+0x30..+0x44` fields), read the table
+  from the ROM image, and match each entry's first image to the capture's best library animation
+  (`dmd_library/anim_NNN_img<first image>`). On Transformers the row-order guesses were wrong for every jackpot
+  and several battles: battle hits index by **shots left** (`BASE - left`, kept per player across restarts), not
+  hits since the start; jackpots by the shot, a random draw or a no-repeat bag; a lock's animation by a
+  per-player music call that moves on at each multiball. Post that index from the game (an event argument such
+  as `left` or `anim`) and key the map on it. Captures drawn as run-time text (wizard character names) score
+  under 50 % against every recorded frame yet are real ROM output: map them from the code too.
+- Pack row labels can be wrong ("JP2" rows that are double-jackpot frames): trust the capture's frames.
 - Screen numbers and roles are the author's: Transformers puts the music on 4 and the topper on 0 (both `off` in
   the shipped option), and five overlay boxes on the backglass with `CustomPos`. Read `screens.pup`; configure
   the windows' `layers` from it.
@@ -196,9 +208,9 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
 | Game | Pack | Game with the pack | State |
 |---|---|---|---|
 | Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the fork's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF-PuP](https://github.com/Ashram56/Tron-Legacy-MPF-PuP) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers; not yet on `tools/pup/runtime/` |
-| Transformers Pro 1.80 | `tf_180` v1.0 by TerryRed, private copy `Ashram56/Transformers-PuP` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `claude/pup-pack` (in the game repo, not a fork) | Built on `tools/pup/runtime/`: backglass with its five overlay boxes, DMD in the pack's art, topper, the pack's music; 210 of 213 captures in use mapped; GoZen with d3d11va on Windows (1080p at 4.3 ms a frame, Ryzen 7 2700), Godot 4.6.3; seen running a Blackout battle on Windows |
+| Transformers Pro 1.80 | `tf_180` v1.0 by TerryRed, private copy `Ashram56/Transformers-PuP` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `claude/pup-pack` (in the game repo, not a fork) | Built on `tools/pup/runtime/`: backglass with its five overlay boxes, DMD in the pack's art, topper, the pack's music; every capture in use mapped, each variant checked against the ROM's animation tables; GoZen with d3d11va on Windows (1080p at 4.3 ms a frame, Ryzen 7 2700), Godot 4.6.3; seen running a Blackout battle on Windows |
 
-Keep this file current. Last updated 2026-10-10 (the runtime in `tools/pup/runtime/` with GoZen on Windows,
+Keep this file current. Last updated 2026-10-10 (variants from the ROM's animation tables, not the pack's row order; before: the runtime in `tools/pup/runtime/` with GoZen on Windows,
 conditions on arguments and the player's state, whole-frame captures, never convert; from the Transformers pack;
 before: Windows plays the pack through GoZen with GPU decoding, fork layout and sync lessons, the PuP Pack agent,
 the format page and `tools/pup/`, from the Tron work in Tron-Legacy-MPF-PuP and Tron-LE-PuP-Pack).
