@@ -147,6 +147,9 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 - **Hardware video decoding** is a GDExtension (GDE GoZen) with FFmpeg and the nvmpi decoders linked in, cross-built
   in Docker (`scripts/build_gozen.sh arm64`) from a clean work folder; the `.so` is committed with its sha256 in the
   commit message and needs glibc 2.29 at most. No decoder device in `/dev` means software decoding, never a crash.
+- **The same add-on on Windows** (`scripts/build_gozen.sh windows`, a MinGW-w64 cross build in Docker): one
+  static DLL with FFmpeg's Direct3D 11 Video / DXVA2 decoding, nothing else to install, so `setup.py` only copies
+  it (with the native video add-on beside it as the fallback). Details: the PuP Pack agent, section 6.
 - **Session:** X11 (Godot places one window per monitor only there), autologin, no screen blanking (`run.py` runs
   `xset s off -dpms`). openbox without a display manager works.
 - **Sound:** the Xavier NX devkit's ALSA default is an I2S card with nothing on it; the hwdec install writes a
@@ -175,5 +178,5 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-10 (token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-10 (GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
