@@ -1,5 +1,9 @@
 # Agent A: ROM extraction (reverse engineering a Stern SAM pinball ROM)
 
+> **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
+> Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
+> access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+
 This file is for an agent (or a person) who has to take a **Stern SAM** game ROM apart: extract the
 sounds, DMD animations and light shows, map switches to callouts, recover the full rules, and package it
 all for a rebuild in MPF (Mission Pinball Framework) or another engine.

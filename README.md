@@ -22,5 +22,7 @@ links them to these agents. Tron: [Tron-Legacy-LE-ROM-Decryption](https://github
 and [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) (game page:
 [`docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md)).
 
-**Keep it current.** Any thread that learns something a later game would need (a method, a fact about SAM,
-MPF or Godot, a mistake and its fix) folds it into the agent file or knowledge doc that owns it, with a PR here.
+**Feed it back.** Every agent that uses this repository, on any game, reports what it learns that a later game
+would need (a method, a fact about SAM, MPF or Godot, a mistake and its fix) in the same session, without being
+asked: a pull request if it has write access here, otherwise a GitHub issue opened directly. See
+[CONTRIBUTING.md](CONTRIBUTING.md).

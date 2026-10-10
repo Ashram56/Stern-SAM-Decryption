@@ -1,5 +1,9 @@
 # Agent D: VPX to MPF bridge (work in progress)
 
+> **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
+> Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
+> access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+
 Make a Visual Pinball X table play with the MPF game instead of PinMAME and the ROM: VPX keeps the ball, the
 physics and the mechanical sounds; MPF runs the rules; Godot draws the DMD and plays the ROM's speech and
 music. Part of the [master plan](README.md). The player-facing set-up is the game repo's `docs/vpx.md` (Tron:

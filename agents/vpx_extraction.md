@@ -1,5 +1,9 @@
 # Agent B: VPX table extraction (MPF Monitor layout)
 
+> **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
+> Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
+> access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+
 Game agnostic. From a Visual Pinball X table (`.vpx`), produce what MPF Monitor needs (the playfield picture
 and every switch, lamp and flasher placed on it, named as the MPF machine config names them) and the table's
 script (which the [VPX bridge agent](vpx_bridge.md) starts from). Tron Legacy is the worked example. Labels:
