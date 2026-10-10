@@ -36,6 +36,7 @@ credentials or hostnames.
 | Building the game in MPF / GMC / Godot | [knowledge/sam_to_mpf_playbook.md](knowledge/sam_to_mpf_playbook.md) or [agents/recreation.md](agents/recreation.md) |
 | VPX table extraction, VPX bridge | [agents/vpx_extraction.md](agents/vpx_extraction.md), [agents/vpx_bridge.md](agents/vpx_bridge.md) |
 | HD display, fonts, look and feel methods | [agents/improvement.md](agents/improvement.md), [knowledge/dmd_hd_upscaling.md](knowledge/dmd_hd_upscaling.md) |
+| PuP Packs: format, trigger mapping, playing them, installing from the author's zip | [agents/pup_pack.md](agents/pup_pack.md), [knowledge/pup_pack_format.md](knowledge/pup_pack_format.md) |
 | Installers, setup, run, platforms | [agents/packaging.md](agents/packaging.md) |
 | The plan itself, the order, the inputs | [agents/README.md](agents/README.md) |
 | A tool | `tools/` (its README too) |

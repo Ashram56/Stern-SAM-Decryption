@@ -10,10 +10,11 @@ project.
 
 | Folder | What it holds |
 |---|---|
-| [`agents/`](agents/README.md) | One Markdown file per agent: A [ROM extraction](agents/rom_extraction.md), B [VPX extraction](agents/vpx_extraction.md), C [strict recreation](agents/recreation.md), D [VPX bridge](agents/vpx_bridge.md), E [improvements](agents/improvement.md), F [packaging](agents/packaging.md) |
-| [`knowledge/`](knowledge/README.md) | The reference docs the agents share: the SAM to MPF playbook, the SAM boards' bus and interfaces, the SAM OS API, rules spec templates, the HD DMD method, what a recreation needs from a ROM extraction |
+| [`agents/`](agents/README.md) | One Markdown file per agent: A [ROM extraction](agents/rom_extraction.md), B [VPX extraction](agents/vpx_extraction.md), C [strict recreation](agents/recreation.md), D [VPX bridge](agents/vpx_bridge.md), E [improvements](agents/improvement.md), F [packaging](agents/packaging.md), G [PuP Pack](agents/pup_pack.md) |
+| [`knowledge/`](knowledge/README.md) | The reference docs the agents share: the SAM to MPF playbook, the SAM boards' bus and interfaces, the SAM OS API, rules spec templates, the HD DMD method, what a recreation needs from a ROM extraction, the PuP Pack format |
 | [`tools/rom/`](tools/rom/README.md) | The ROM extraction toolkit from Tron: PinMAME hooks and trace recorder, Ghidra pipeline, table and media extractors, bus tracer |
 | [`tools/vpx/`](tools/vpx) | `vpx_extract.py` and `vpx_map.py`: a `.vpx` table to an MPF Monitor layout (`pip install olefile pillow`) |
+| [`tools/pup/`](tools/pup/pup_decode.py) | `pup_decode.py`: a PinUP Player pack (folder or its author's zip) decoded, and its DMD captures matched to the game's display effects (`pip install pillow`) |
 | `tests/` | `python -m pytest -q tests` |
 
 **What is not here**: no ROM, nothing extracted from a ROM, and nothing about one game only. Each game keeps

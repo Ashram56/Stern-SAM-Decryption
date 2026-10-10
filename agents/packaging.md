@@ -112,6 +112,12 @@ soon as the game repo exists:
   `setup.py` or `run.py`.
 - **macOS and Linux one lines** use `bash <(curl ...)`, not `curl | bash`, so the script keeps the terminal as
   stdin for its questions and takes options after the line (inferred from the scripts' prompts).
+- **Third-party packs install from their author's zip**: a game that plays a PuP Pack takes it from the zip the
+  author publishes, as an option of setup and of every installer (Tron: `TRON_PUP_ZIP`, `--pup-zip`, `-PupZip`;
+  the [PuP Pack agent](pup_pack.md), section 2), and the README names the author next to it. With a zip the
+  installers skip the pack repository's token check. Windows installer parameters need
+  `[CmdletBinding(PositionalBinding = $false)]` once a string parameter is added, or a stray setup argument binds to
+  it. (verified 2026-10-10 with pwsh 7.4 on Linux)
 - **CI runs only on pushes to `main`**: test the installers locally in dry-run mode; on Windows only the
   owner can run them for real.
 
@@ -157,4 +163,4 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-10 (moved to Stern-SAM-Decryption; Tron status to the Tron game page).
+Keep this file current with every installer change and owner test. Last updated 2026-10-10 (moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).

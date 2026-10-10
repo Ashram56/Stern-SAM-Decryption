@@ -1,0 +1,121 @@
+# PuP Packs: the format, decoded for a game without PinMAME
+
+A PuP Pack is the media a PinUP Player setup plays around a Visual Pinball table: videos on the backglass, the
+topper or a full DMD screen, music, pictures. PinUP Player watches PinMAME (the DMD, the switches, the lamps)
+and fires the pack's rows. An MPF recreation has no PinMAME, so to play the same pack at the same moments it
+has to know what each row waits for and translate it into the game's own events. This page is that
+translation, for any pack; the [PuP Pack agent](../agents/pup_pack.md) uses it, and
+[`tools/pup/pup_decode.py`](../tools/pup/pup_decode.py) reads a pack this way. Tron Legacy's pack is the worked
+example (its decoded form: [Tron-LE-PuP-Pack `docs/decoding/`](https://github.com/Ashram56/Tron-LE-PuP-Pack/blob/main/docs/decoding/README.md)).
+Labels: **observed** (seen in PinUP Player or in a pack), **code** (as a working player implements it),
+**inferred**.
+
+## 1. Files
+
+The pack is one folder named after the PinMAME ROM set it was made for (Tron: `trn_174h`, LE 1.74), usually
+shipped in a zip under `PUPVideos/<romset>/`:
+
+| File | What it is |
+|---|---|
+| `screens.pup` | CSV: the PuP screens (layers) the pack uses, their mode and background |
+| `playlists.pup` | CSV: one row per media folder (a playlist) |
+| `triggers.pup` | CSV: one row per action: when `Trigger` is true, play something on a screen |
+| `<playlist>/` | one folder per playlist: mp4 videos, mp3 music, png/jpg pictures |
+| `PupCapture/<n>.bmp` | DMD frame captures; `D<n>` in `triggers.pup` refers to `<n>.bmp` |
+| `PuP-Pack_Options/*`, `Option *.bat` | alternative `.pup` sets (with or without a topper, a full DMD...): the `.bat` copies one set over the active files |
+
+The CSVs have a header row, UTF-8 (sometimes with a BOM), quoted fields; PinUP Player runs on Windows, so
+names are case-insensitive (a row's `PlayList` may differ in case from the folder). Read them as they are and
+never edit them: a new release of the pack then needs no code change. (observed, Tron)
+
+## 2. `screens.pup`
+
+Columns: `ScreenNum, ScreenDes, PlayList, PlayFile, Loopit, Active, Priority, CustomPos`.
+
+- `Active` is the screen's mode: `ForceBack` (an underlay: its background shows whenever nothing else plays),
+  `ForcePop` / `ForcePopBack` (a top layer: only visible while something plays on it), `Show`, `off` (not
+  used by this option set), and music-only screens. (observed, Tron: 2 `ForceBack`, 12 `ForcePopBack`,
+  13/14 `off`)
+- `PlayList` / `PlayFile` is the screen's background. `CustomPos` (`ref,x,y,w,h`, in percent of screen `ref`)
+  places a layer over another one.
+- Screen numbers are the pack author's choice; read them, don't assume them. Decide per screen which window of
+  the game shows it (Tron: 2 + 12 backglass, 13 + 14 topper, 15 music only).
+- Screens set `off` by the shipped option may be the pack's optional displays (Tron: the topper; the pack's
+  `Option Selected.txt` says to set them to `ForceBack` / `ForcePop` when a topper exists). (observed)
+
+## 3. `playlists.pup`
+
+Columns: `ScreenNum, Folder, Des, AlphaSort, RestSeconds, Volume, Priority`. `Folder` is the playlist's name
+and folder. `AlphaSort=1`: each fire plays the next file in name order; `0`: a random one. `RestSeconds` and
+`Volume` are the playlist's defaults (a trigger row overrides them). (code)
+
+## 4. `triggers.pup`
+
+Columns: `ID, Active, Descript, Trigger, ScreenNum, PlayList, PlayFile, Volume, Priority, Length, Counter,
+RestSeconds, Loop, Defaults`. Rows with no `Trigger` (titled `**** ... ****`) are section headers.
+
+| Column | Meaning (code) |
+|---|---|
+| `Trigger` | the condition: one or more terms joined by commas, all true at once (section 5) |
+| `ScreenNum` | where to play |
+| `PlayFile` / `PlayList` | that file of the playlist, or (empty file) the playlist's next file |
+| `Priority` | a play replaces what runs on that screen when its priority is >= the running one, else it is dropped |
+| `RestSeconds` | after firing, the row ignores its trigger for that long |
+| `Loop` | empty: once; `Loop`: until replaced or stopped; `SetBG`: becomes the screen's background; `StopFile`: stop that file; `StopPlayer`: stop the screen; `SkipSamePrty`: drop the play if the running one has the same priority |
+| `Volume`, `Length` | volume override (100 = normal); play time cap in seconds |
+
+When a video ends, the screen's background comes back. (code)
+
+## 5. Trigger codes and their MPF translation
+
+| Code | PinUP Player fires it when | In the MPF game |
+|---|---|---|
+| `D<n>` | PinMAME's DMD shows capture `<n>` (section 6) | the event the game posts when the display effect that draws that frame takes the DMD (Tron: `tron_deff_<id>`); found by matching the capture against every frame the game can show |
+| `D0=1` | PinUP Player starts | an event the game posts when its PuP player is ready |
+| `W<n>=1` / `W<n>` | PinMAME switch `n` closes | the switch, **by name**: PinMAME's switch number is the SAM switch number, but a hardware overlay (P-ROC) renumbers switches |
+| `L<n>=1` | PinMAME lamp `n` is on | rarely what it looks like: PinMAME's lamp numbering is not the SAM lamp matrix numbering (Tron: `L35`). Replace the whole row with the game event it means |
+| several terms (`W11=1,L35=1`) | all are true at once | an override: the row ID mapped to the game event (Tron: row 23, VUK while Flynn's Arcade is lit = the arcade award effect) |
+| other letters | other PinMAME outputs or table script events (inferred: none in the Tron pack) | map by hand, per row |
+
+Keep this translation in one data file (a trigger map: `dmd: {n: [events]}`, `switches: {n: name}`,
+`override: {row ID: [events]}`), never in the pack and never spread through the code. An event can carry a
+condition on its arguments when one effect draws several captures by variant (Tron:
+`tron_deff_112{award==1}` for DOUBLE SCORING). (code)
+
+## 6. How a capture is matched
+
+`PupCapture/<n>.bmp` is a 128x32, 24-bit BMP: a screenshot of PinMAME's DMD. Pixels of exactly `RGB(253,0,253)`
+(purple) draw a rectangle; only the dots inside it count, each lit (red >= 9) or unlit, and the purple pixels
+themselves are ignored. `D<n>` fires when a DMD frame has the same dots inside that rectangle. (code, checked on
+all 98 Tron captures: 83 match a recorded frame at 100 %, 88 at 90 % or more)
+
+To translate one, compare it with every frame the game can show (each display effect's recorded animation, its
+variants, the ROM's shared library animations credited to the effects that play them) and score each frame
+by intersection over union of lit dots inside the rectangle. The effects with a frame within 0.5 % of the best
+(2 % when the best is under 97 %) are the candidates. Then judge:
+
+- **Several effects share the frame** (Tron D7: the three skill shots): map all of them.
+- **A partial frame** (a score line, "00" in player 1's score: Tron D2): any frame with that text matches; map
+  it to the game event that means it (`player_added{num==1}`), not to the best-scoring effect.
+- **A frame the game never records** (the boot screen, the attract cycle's logo): the game posts its own event
+  (Tron: `pup_power_up` at the first attract, `pup_attract_cycle` on a timer).
+- **Captures no row uses** (Tron: 14 of 98): leave them out of the map, note them.
+- Two captures of one effect firing the same row must send it once.
+
+Re-run the match whenever the game's DMD animations change: an effect renumbered or redrawn breaks only the
+lines whose mapped effect no longer draws the capture.
+
+## 7. Music
+
+A pack that replaces the game's music plays it on a music-only screen with `SetBG` rows (Tron: screen 15, the
+OST). In PinUP Player the ROM's own music is muted by the user. In MPF, drop the ROM's music calls only once the
+PuP player says it is ready (videos and music in place); otherwise the game keeps its own music. Speech and
+effects always stay. (code, Tron)
+
+## 8. A pack and its ROM version
+
+A pack is made against one ROM version: its captures are that version's frames. Another version, or another
+release of the pack, can change captures or rows: re-run the match and the decode, and fix the map lines that
+change. Record the pack's version and author with the game. (inferred)
+
+Last updated 2026-10-10 (from the Tron pack's decoding in Tron-LE-PuP-Pack and the Tron-Legacy-MPF-PuP player).
