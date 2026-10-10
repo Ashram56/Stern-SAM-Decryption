@@ -159,6 +159,7 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
 | Game | Asset repo (A) | Game repo (C, D, E, F) | Game page |
 |---|---|---|---|
 | Tron Legacy LE 1.74 / Pro 1.74 (worked example) | [Tron-Legacy-LE-ROM-Decryption](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption) | [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) | [docs/agents/README.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md) |
+| Transformers Pro 1.80 | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `rom/` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) | `CLAUDE.md` and `README.md` there |
 
 Add a row when a new game starts. Last updated 2026-10-10 (contribution rule: CONTRIBUTING.md; moved here from Tron-Legacy-MPF with the knowledge
 base and the ROM extraction agent).
