@@ -73,8 +73,85 @@ overlay, a model) and tells the packaging agent, which carries it to every insta
   shot; Sea of Simulation stages played by their shots pay the shot value, not the stage million. Both are
   in `rom_differences.md`; future owner reports may be the same kind.
 
-## 5. Status and open work per game
+## 5. Starting a second game (from Transformers Pro 1.80)
 
-On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation").
+What the second game showed (Transformers-MPF, ROM tf_180, 2026-10-04 to 2026-10-10); read before porting a third.
+Each line has the Transformers value as the example.
 
-Last updated 2026-10-10 (moved to Stern-SAM-Decryption; Tron status to the Tron game page).
+**Setting up**
+
+- **Start from the previous game's OS, not from scratch.** Compare the new ROM's OS tables with the old one's
+  first (A's `rom_map.json` table registry): on tf_180, deffs 1-39, leffs 1-19, sound calls 0x001-0x019,
+  adjustments 1-64 and the audit counter ids have Tron's numbers, priorities and flags. Copy `game/tron` as
+  `game/<tag>` with a rename (`tron` -> tag, `TronOS`, event prefix, env vars), keep the OS modules, and isolate
+  every game value (start/shoot-again lamps, music and speech calls, game-over leff) in one `GAME` dict set to
+  `None` until A's specs say otherwise. The machine boots and plays a full game on virtual hardware in a few
+  hours that way; the boot test is the first test to write. [code]
+- **One repository** works: A in `rom/`, B in `game/monitor/` + `docs/vpx/`, C everywhere else. Merge A's and
+  B's branches into C's (the first merge needs `--allow-unrelated-histories`); re-merge as they push.
+- **Read what A has not packaged yet from the ROM yourself**, as interim files under `game/config/interim/`
+  with a generator that needs the ROM path (adjustments, audits, deff and leff tables, the font table), and let
+  the build prefer A's files when they land. It keeps C unblocked without guessing.
+- **Dedicated switches** come numbered 129-160 in A's package (128 + n): `gen_config.py` turns them into "D<n>".
+- **Fonts are ROM data**: the font table gives every glyph's image and x/y offsets, so `gen_fonts.py` builds
+  BMFonts straight from `fonts.json` (Tron had to rebuild offsets from captures).
+- **A's per-deff `timing.json` carries every text draw** (`pages[].texts`: string, font, x, y, flags, return
+  address) and image draw. Layouts come from there, not from guesses; the status panel is found by its draw
+  call's return address (`216cc` on tf_180). A page whose texts are all panel calls is not a value page.
+- **Music loops**: A exports intro + looped body as one WAV with `loop_start_at`; write a RIFF `smpl` loop into
+  the copied WAV and Godot's importer loops only the body.
+- **Godot imports CSVs as translations**: put a `.gdignore` in `game/config/` when CSVs live there.
+- **Leff tables can move between A's releases** (Transformers: `rom_data/io/lamp_effects.csv`, `loops` = yes for
+  until stopped, `tag` = code for leffs drawn from game state). When the traces log coil drivers raw (3-17 ms
+  slices), drop Tron's 0.24 s coil hold (`COIL_OFF_DELAY`).
+
+**Matching the traces**
+
+- **Drive scenarios on the reference's input times** (each hit, drain and button waits until the reference
+  input's time after "ready"); otherwise timing drifts up to 0.4 s across a long trace and every timed rule looks
+  wrong. Replace the old game's switch numbers in the runners with the new game's ball device holes. Forced
+  random picks come from watched variables, or, when none is traced, from the scores and audits they cause
+  (Transformers: mode-start relight picks from the mode-start score caller and shot audits). Ignore values that
+  are uninitialised RAM (0xffff before the game starts).
+- **Read the gate, not its name.** A decompile name can say the opposite of the code: `any_timed_mode_running`
+  [0x01006704] tests the six multiball flags; the timed modes are [0x010067bc]. Ask A for the flag list behind
+  every "multiball / timed mode" condition and check it against a trace where only one of them runs.
+- **Switch flags matter.** The captive ball (flags 0x1fff0000) runs its handler on both edges, 3 ticks after each.
+- **A captured deff starts its own leffs and sounds.** Calling `leff_start` too doubles them in the trace; start
+  the rule's leff and first sound only when the capture lacks them. Passing `sounds=` replaces the capture's
+  sounds, so use it only for deffs with none. A deff with no capture length never ends and blocks every lower
+  one: give each such deff a length from the traces.
+- **Show tasks**: a show ends when another effect replaces its deff; queueing a show task that is already
+  playing replaces it; a multiball intro waits on its own priority, not on the show below it.
+- **Sound channels decide some rules.** A sound call is refused while a higher priority sample holds its channel
+  (sample `mask` in samples.csv, low byte of the call's flags); a rule that retries until it plays then acts at
+  once (Transformers' eject warning: 937 retries, logged). Track the playing samples to know.
+- **The shaker** belongs to the deff, not the rule: run it when the deff gets the display (A's `shaker.csv`),
+  never when the rule requests it; a new run never cuts a longer one short.
+- **Ball search timing is a reload hunt.** Each search at the wrong time is a missing or extra reload: look 10 s
+  before the ROM's search for the event that reloaded it, then grep the decompile for the reload function's
+  callers (tf_180: score, playfield switches, each show task at queue, start and end, the mode totals, the deffs
+  of FUN_01006350; flipper buttons pause it; a scoop eject does not reload). Once scores match, compare one
+  kicker's coil on-times per trace: they show every search (Transformers: all searches matched).
+- **Ball end clears the display, the ROM does not always.** A mode total on screen at the drain plays out before
+  the ball-end total shows again (tf_180 deff 137); time it from its start.
+- **A multiball's end waits for a lock kick in progress**: the drain check defers while a device is kicking.
+- **Timers that pause**: the combo window does not count while the eject holds a ball ([0x0103a4f0(3)]).
+
+**MPF and Python**
+
+- **MPF ball devices**: a ball that comes back while an eject is unconfirmed is a failed eject to MPF and goes
+  straight out again; keep `eject_timeouts` under the scenario's shortest return (1 s on the left eject, with the
+  ROM's 2 s device task kept in the rules) and lower `exit_count_delay` / `entrance_count_delay` to let a lock
+  release four balls 0.4 s apart. A ball hold must cover every ball the rules keep. Log the eject coil yourself
+  if the trace check compares it (MPF's pulse is not in the trace).
+- **Mechs on virtual platforms**: model them as the reference emulator does, not as the machine (the Optimus
+  figure's position switches never move in the simulator, so every move runs to its 7.65 s time limit).
+- Do not give a feature an attribute and a method of the same name: Python replaces the method silently and
+  the hook dies with "int is not callable" deep in a scenario.
+
+## 6. Status and open work per game
+
+On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation"; Transformers: [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `README.md`).
+
+Last updated 2026-10-10 (section 5: what porting Transformers Pro 1.80 showed).
