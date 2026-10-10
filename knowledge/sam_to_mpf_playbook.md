@@ -193,6 +193,12 @@ for merges.
 - **Reference captures are one run**: random choices (mystery awards, clip picks) and the status panel
   (score 00) are frozen in them. Build those deffs from the rules' arguments and draw the live panel over.
   Some captures hold two runs (sounds play twice); use the ROM run length.
+- **State frozen in a capture shows as a dead input**: a deff that draws per-player state (Transformers deff 40
+  draws the chosen side's logo, deff 41 its name) was captured in one state only, so the flippers changed the
+  side and the music but the DMD never moved and the owner reported the buttons as doing nothing. Read the
+  deff's draw calls for the other state's image or message and build that slide from the capture with it in
+  place; and a deff that redraws in place on input (no new start in the ROM trace) must still re-post its
+  `tf_deff_<id>` event, or a PuP Pack keyed on it never sees the change (Transformers-MPF PR #3).
 - Fonts: the font table and glyph offsets are code data, not in the images; the font index is the image
   group index. Text drawn in Godot's default font anywhere is a bug (test for it).
 - Sound calls `0x01-0x08` are channel stops; music calls replace the running music.
