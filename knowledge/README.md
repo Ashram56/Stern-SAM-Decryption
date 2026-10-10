@@ -15,7 +15,7 @@ agent itself: [../agents/rom_extraction.md](../agents/rom_extraction.md).
 | [pup_pack_format.md](pup_pack_format.md) | You play a PinUP Player pack (PuP Pack) with the MPF game: the pack's files, trigger codes and how each maps to a game event, how a DMD capture is matched. Tool: [../tools/pup/](../tools/pup/pup_decode.py); agent: [../agents/pup_pack.md](../agents/pup_pack.md). | ~6 min |
 | [templates/](templates) | You write rules specs: one-file-per-feature template and the brief given to the Tron rules workers. | ~3 min |
 | [../tools/rom/](../tools/rom/README.md) | You extract a ROM: the Tron toolkit (emulator trace, Ghidra pipeline, table extractors, media exporters, bus tracer) and how to retarget it. | ~3 min |
-| [rom_decomp_feedback.md](rom_decomp_feedback.md) | You are the ROM extraction agent, or brief one. What the Tron MPF build consumed, what was missing or wrong, and what to deliver for the next game (now folded into the ROM extraction agent's section 14). | ~8 min |
+| [rom_decomp_feedback.md](rom_decomp_feedback.md) | You are the ROM extraction agent, or brief one. Dated record of what the Tron MPF build had to recover or guess, and the package defects it found. The instructions (what worked, what to deliver) are the ROM extraction agent's section 14. | ~4 min |
 
 New learnings come back here as [CONTRIBUTING.md](../CONTRIBUTING.md) says (a PR with write access, otherwise an
 issue). What stays in each game's repositories, not here: the game's own facts (addresses, status, open work, owner
