@@ -39,7 +39,8 @@ when a repository is attached or when you point it at them.
    > starts one thread per agent in the order of section 3, briefs each with its agent file and the inputs it
    > needs, starts the next agent when the previous one has delivered what it needs, and brings back to the
    > project chat only what needs the owner. Every thread follows its agent file and updates it whenever it
-   > learns something the file should say: method in Stern-SAM-Decryption, game facts in the game's repos.
+   > learns something the file should say: game facts in the game's repos; game-agnostic learnings to
+   > Stern-SAM-Decryption per its CONTRIBUTING.md (a PR with write access, otherwise an issue opened directly).
 5. **Start the plan with one message in the project chat**, with your inputs (section 1) attached as files:
    > Run the master plan.
    > Game: `<game, model, version>`. ROM: `<set name(s)>`. VPX table: `<table name, author, version>`.
@@ -128,8 +129,12 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
 
 ## 5. Rules every agent follows
 
+- **Feed the knowledge base back, always** ([CONTRIBUTING.md](../CONTRIBUTING.md)). Every agent that uses this
+  repository, on any game, reports every game-agnostic learning here in the same session without being asked:
+  a **pull request** when it (or the owner it works for) has write access to Ashram56/Stern-SAM-Decryption, else
+  a **GitHub issue** on it, opened directly with no user step. It says in its report which PR or issue it opened.
 - **Keep these docs current.** When a thread learns something that changes how a later agent would work (a
-  method, a fact, a mistake and its fix, an owner decision), fold it in, in the same session, with a PR here:
+  method, a fact, a mistake and its fix, an owner decision), fold it in, in the same session, as above:
   ROM methods in rom_extraction.md, build facts in the playbook or recreation.md, install and run facts in
   packaging.md, VPX facts in vpx_extraction.md or vpx_bridge.md, look-and-feel methods in improvement.md.
   Facts true of one game only (its status, open work, owner decisions, addresses, run values) go in that
@@ -155,5 +160,5 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
 |---|---|---|---|
 | Tron Legacy LE 1.74 / Pro 1.74 (worked example) | [Tron-Legacy-LE-ROM-Decryption](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption) | [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) | [docs/agents/README.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md) |
 
-Add a row when a new game starts. Last updated 2026-10-10 (moved here from Tron-Legacy-MPF with the knowledge
+Add a row when a new game starts. Last updated 2026-10-10 (contribution rule: CONTRIBUTING.md; moved here from Tron-Legacy-MPF with the knowledge
 base and the ROM extraction agent).

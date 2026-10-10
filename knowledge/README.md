@@ -16,7 +16,8 @@ agent itself: [../agents/rom_extraction.md](../agents/rom_extraction.md).
 | [../tools/rom/](../tools/rom/README.md) | You extract a ROM: the Tron toolkit (emulator trace, Ghidra pipeline, table extractors, media exporters, bus tracer) and how to retarget it. | ~3 min |
 | [rom_decomp_feedback.md](rom_decomp_feedback.md) | You are the ROM extraction agent, or brief one. What the Tron MPF build consumed, what was missing or wrong, and what to deliver for the next game (now folded into the ROM extraction agent's section 14). | ~8 min |
 
-What stays in each game's repositories, not here: the game's own facts (addresses, status, open work, owner
+New learnings come back here as [CONTRIBUTING.md](../CONTRIBUTING.md) says (a PR with write access, otherwise an
+issue). What stays in each game's repositories, not here: the game's own facts (addresses, status, open work, owner
 decisions, departures from the ROM, player docs). For Tron: the
 [Tron game page](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), which also lists
 where the Tron instance lives.

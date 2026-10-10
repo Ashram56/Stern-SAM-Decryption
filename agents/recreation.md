@@ -1,5 +1,9 @@
 # Agent C: strict recreation of the ROM's game in MPF
 
+> **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
+> Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
+> access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+
 Rebuild a Stern SAM game in MPF + Godot (GMC) **exactly as the ROM plays it**: rules, scoring, display,
 sound, lamps, service menu and every operator setting. Nothing here improves on the original; that is the
 optional [improvement agent](improvement.md). Part of the [master plan](README.md). Tron Legacy LE 1.74 is

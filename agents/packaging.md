@@ -1,5 +1,9 @@
 # Agent F: packaging (install and run on every platform)
 
+> **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
+> Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
+> access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+
 Make the game installable and runnable by the owner on every platform the master plan targets, with **one
 line to install** and **one command to run** per platform: Windows, macOS, Linux, plus the options for each
 hardware target (virtual + MPF Monitor, the real machine on a P-ROC, Visual Pinball X). Part of the
