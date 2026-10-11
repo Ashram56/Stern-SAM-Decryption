@@ -45,7 +45,7 @@ The tools are in this repository's `tools/vpx/` (`pip install olefile pillow`; t
 ```
 python tools/vpx/vpx_extract.py TABLE.vpx OUT                       # any VPX 10.x table
 python tools/vpx/vpx_map.py OUT --names <switches.yaml> <lights.yaml> <coils.yaml> [<hardware.yaml>] \
-    --mech <NUMBER:OBJECT,...> --cabinet
+    --mech <NUMBER:OBJECT,...> --cabinet --device-size 0.035
 ```
 
 **Always pass `--cabinet`** (and the game's own hardware config to `--names` when it adds switches, such as a
@@ -85,7 +85,7 @@ Ashram56/Transformers-MPF `docs/vpx/`:
 ```
 python tools/vpx/vpx_extract.py "Transformers Pro (Stern 2011) v.2.4.vpx" out
 python tools/vpx/vpx_map.py out --names <Transformers-MPF>/rom/mpf_package/config/{switches,lights,coils}.yaml \
-    <Transformers-MPF>/game/config/hardware.yaml --mech 43:opr,44:opr,42:kickermegatron --cabinet
+    <Transformers-MPF>/game/config/hardware.yaml --mech 43:opr,44:opr,42:kickermegatron --cabinet --device-size 0.035
 ```
 
 - With the ROM extraction's config (`rom/mpf_package/config/` in the game repo) every placed device is named;
@@ -173,6 +173,11 @@ button on the right on Transformers, and the owner flagged it); some **lamp obje
   `switch:`, `light:`, `coil:` (flashers go here), `flipper:`, `autofire:`, `ball_device:`, each device
   `x`/`y` as fractions of the playfield picture, optional `size`; top-level `playfield:`, `device_size`,
   `device_alpha`, `device_outline`. MPF Monitor rewrites the file when a spot is dragged.
+- **Marker size**: top-level `device_size` is a marker's diameter as a fraction of the picture's width
+  (MPF Monitor 1.0.1 `mpfmon.py`: default 0.02, a float; a device's own `size` overrides it). 0.02 is too small
+  to read on a tall SAM playfield (the Transformers owner asked for bigger, 2026-10-11): pass
+  `--device-size 0.035`. It writes `device_size`, spaces ball stack slots one marker apart, and pushes apart
+  any markers that would overlap (a bumper's lamp on its switch, a flasher on its insert).
 - **Names must be the machine config's** (`switches:`, `lights:`, `coils:` names), never VPX names:
   `--names` joins on the number. Without a config, placeholders `s_NN_<vpx>`, `l_NN_<vpx>`, `f_NN_<vpx>`
   carry the number for the recreation agent to rename.
@@ -210,4 +215,6 @@ made, what went on the cabinet strip, and the overlay verdict. List what needs t
 
 - 2026-10-10: flipper buttons and EOS on their own side of the cabinet strip.
 
-Last updated 2026-10-10.
+- 2026-10-11: `--device-size` (bigger markers, none overlapping) after the Transformers owner asked for bigger icons.
+
+Last updated 2026-10-11.
