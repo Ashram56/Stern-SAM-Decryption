@@ -167,3 +167,12 @@ def test_cabinet_strip_puts_flipper_buttons_under_their_side():
     assert pos["s_r_flipper_button"][0] > 0.6 and pos["s_right_flipper_e_o_s"][0] > 0.6
     assert pos["s_r_flipper_button"][1] == bottom and len(set(pos.values())) == len(pos)
     assert vpx_map.flipper_side("s_flipper_lower_right") == "right" and vpx_map.flipper_side("s_start_button") is None
+
+
+def test_spread_pushes_overlapping_markers_apart():
+    rows = [dict(nx=0.5, ny=0.5), dict(nx=0.5, ny=0.5), dict(nx=0.5, ny=0.505), dict(nx=0.1, ny=0.1)]
+    vpx_map.spread(rows, 0.035, 2.0)
+    for i, a in enumerate(rows):
+        for b in rows[i + 1:]:
+            assert ((a["nx"] - b["nx"]) ** 2 + ((a["ny"] - b["ny"]) * 2.0) ** 2) ** 0.5 >= 0.035
+    assert rows[3] == dict(nx=0.1, ny=0.1)

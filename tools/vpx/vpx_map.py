@@ -83,6 +83,31 @@ def read_names(paths):
     return names
 
 
+def spread(rows, size, aspect, rounds=300):
+    """Push apart devices closer than `size` (MPF Monitor's device_size: a marker's diameter as a fraction of the
+    picture's width) so no two markers overlap: a lamp on its bumper's switch, a flasher on its insert, a ball
+    stack's slots. `aspect` is the picture's height / width (y fractions count that much more)."""
+    gap = size * 1.1
+    for _ in range(rounds):
+        moved = False
+        for i, a in enumerate(rows):
+            for b in rows[i + 1:]:
+                dx, dy = b["nx"] - a["nx"], (b["ny"] - a["ny"]) * aspect
+                d = (dx * dx + dy * dy) ** 0.5
+                if d >= gap:
+                    continue
+                ux, uy = (dx / d, dy / d) if d > 1e-6 else (1.0, 0.0)
+                push = (gap - d) / 2 + 1e-4
+                a["nx"], b["nx"] = a["nx"] - ux * push, b["nx"] + ux * push
+                a["ny"], b["ny"] = a["ny"] - uy * push / aspect, b["ny"] + uy * push / aspect
+                moved = True
+        for r in rows:
+            r["nx"] = round(min(max(r["nx"], size / 2), 1 - size / 2), 4)
+            r["ny"] = round(min(max(r["ny"], size / 2 / aspect), 1 - size / 2 / aspect), 4)
+        if not moved:
+            return
+
+
 def flipper_side(name):
     """"left" / "right" for a flipper button or EOS switch name (s_l_flipper_button, s_left_flipper_e_o_s,
     s_flipper_lower_right ...), else None."""
@@ -132,6 +157,9 @@ def main(argv=None):
     ap.add_argument("--cabinet", action="store_true",
                     help="put the config's switches with no playfield object (buttons, coin door, tilt, EOS) and the"
                          " lamps placed off the picture on a strip along the playfield's bottom edge")
+    ap.add_argument("--device-size", type=float, default=0.0,
+                    help="MPF Monitor marker diameter as a fraction of the picture width (its default is 0.02); "
+                         "writes device_size and pushes apart markers that would overlap")
     ap.add_argument("--mech", default="",
                     help="NUMBER:OBJECT,... switches placed at an object (mechanisms, trough jam)")
     args = ap.parse_args(argv)
@@ -233,11 +261,14 @@ def main(argv=None):
         mpf = names["switches"].get(n) or "s_{:02d}_{}".format(n, safe(it["name"]))
         sw_rows.append(dict(number=n, mpf_name=mpf, vpx=it["name"], type=it["type"], x=round(it["x"], 1),
                             y=round(it["y"], 1), nx=it["nx"], ny=it["ny"], note=note))
+    b = data.get("bounds") or [0, 0, 1, 1]
+    aspect = (b[3] - b[1]) / (b[2] - b[0])
+    step = max(0.006, args.device_size * 1.1 / aspect)     # one marker apart when the markers are sized
     # a ball stack's slots share one object: spread them along the table so they don't overlap
     for obj in {r["vpx"] for r in sw_rows}:
         same = [r for r in sw_rows if r["vpx"] == obj]
         for k, r in enumerate(same[1:], 1):
-            r["ny"] = round(r["ny"] + 0.006 * k, 4)
+            r["ny"] = round(r["ny"] + step * k, 4)
     for kind, table, prefix, section in (("lamp", lamps, "l", "lights"), ("flasher", flashers, "f", "coils")):
         for n in sorted(table):
             obj, objs = main_obj(n, table[n], prefix)
@@ -254,6 +285,9 @@ def main(argv=None):
     if args.cabinet:
         cabinet_strip(sw_rows, li_rows, names["switches"])
 
+    if args.device_size:
+        spread(sw_rows + li_rows, args.device_size, aspect)
+
     cols = ["number", "mpf_name", "vpx", "type", "x", "y", "nx", "ny", "note"]
     for fn, rows, c in (("switches.csv", sw_rows, cols), ("lights.csv", li_rows, cols[:3] + ["kind"] + cols[3:])):
         with open(os.path.join(d, fn), "w", newline="", encoding="utf-8") as f:
@@ -263,6 +297,8 @@ def main(argv=None):
 
     with open(os.path.join(d, "monitor.yaml"), "w", encoding="utf-8") as f:
         f.write("# MPF Monitor layout (x/y: fractions of playfield.png) from vpx_extract.py + vpx_map.py\n")
+        if args.device_size:
+            f.write("device_size: {}\n".format(float(args.device_size)))
         for key, rows in (("coil", [r for r in li_rows if r["kind"] == "flasher"]),
                           ("light", [r for r in li_rows if r["kind"] == "lamp"]), ("switch", sw_rows)):
             if not rows:
