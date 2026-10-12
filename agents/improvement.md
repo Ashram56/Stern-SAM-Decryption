@@ -73,6 +73,24 @@ to worker threads at start-up.
 | Rendering on the main thread | Godot's separate render thread is opt-in here (`run.py --render-thread` / `TRON_RENDER_THREAD=1`; never for the captures, opengl3): with Godot 4.5.2 and the DMD alone it was slower (54.3 vs 56.2 FPS, twice the late frames, glyph texture update errors). The PuP repo (Godot 4.6.3, three videos) turns it on (`thread_model=2`): main thread 54% to 29% of a core, +2 to 3 FPS. Measure again on each Godot upgrade | Here: +1.9 FPS off; PuP: +2 to 3 FPS on |
 | Background loads got one worker thread on 4 cores | `threading/worker_pool/low_priority_thread_ratio=0.5` | Shorter stalls when several loads overlap |
 
+**Finding what causes a hitch.** Godot's frame times (the perf probe's `frames.csv`, time since Godot started) and
+MPF's log (wall clock) have no common clock. Search the offset (in 0.1 s steps over +-20 s) that puts the most
+frames over 100 ms within 0.5 s after an MPF event, then rank event names by how many hitches they explain against
+how often they fire, and compare with random times. On Tron (full game, Xavier NX mode 5, 2026-10-12) 67 of 68
+hitches of 100-150 ms fell just after a `slide_deff_N_created` (15% for random times; offset 4.7 s), spread over
+36 different effects, while video opens explained 11 (observed). Then time each step of a slide show in the game
+itself: a `node_added` handler on the slide's root notes the time, its `ready` signal, the next `process_frame` and
+`RenderingServer.frame_post_draw`; wrap the slide scripts' functions with timers summed per slide; and measure the
+same process-to-drawn time at random moments as the baseline (Tron: 27.5 ms). Tron's results, full game:
+
+| Found | Fix | Measured |
+|---|---|---|
+| GMC keeps each slide's PackedScene once loaded (`media.gd`), so repeat shows are not reloads: the cost is per show | Preloading the small effects too, after the large ones, and building their HD frames ahead helps first shows only | Hitches 68 to 46, slowest effect 0.26 to 0.11 s, +62 MB video memory |
+| A ROM text `Label` whose glyphs are hidden in HD (a child draws the line) got `add_theme_font_override` / `_font_size_` / `_constant_` again at every update: each call re-themes the label and its children and re-shapes it | Apply the theme only where the label's own glyphs show (classic) | About 25 ms per slide; hitches 46 to 6-12, late frames 264 to 139-149 |
+| What is left: a new slide's first frame on screen costs about 25 ms over a normal frame, unchanged with the glow off, the ROM fonts or no separate render thread | Not script time: reusing slides instead of creating them at each show (GMC) is the next lever | - |
+
+A theme override on a Control is not a cheap setter: set it once, or only when its value changes (observed, Godot 4.6.3).
+
 When adding media: a new kind of picture loaded by a slide gets a VRAM-compressed import unless a script reads its
 pixels; a new effect with 40+ frames is preloaded automatically; a new font goes through `bake_fonts.gd`. After
 changing any of these, run setup (media regeneration and font bake) before measuring.
@@ -88,4 +106,4 @@ Ask the owner before starting any idea listed there as not built.
 and pictures at 1920x480 and 3840x960 for the owner (render through Xvfb with `--rendering-driver opengl3`;
 `--headless` draws nothing). Bump `frame_text.VERSION` when the text matching changes (it keys the cache).
 
-Last updated 2026-10-10 (display options in the service menu; moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).
+Last updated 2026-10-12 (finding what causes a hitch; display options in the service menu; moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).
