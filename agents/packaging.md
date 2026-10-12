@@ -68,6 +68,13 @@ then carries it into every installer, the one-line commands, Docker, CI and the 
    pass-through arguments to `setup.py`. The same names everywhere (`--dry-run` / `-DryRun`, and so on).
 4. **Safe to re-run**: every step is skipped when in place; a second run updates the clone and redoes only
    what changed. A clone whose branch was deleted on GitHub (a merged PR) moves to the default branch.
+   Before the pull, fetch and clear the files the update adds that already sit untracked in the clone, or
+   `git pull` aborts ("untracked working tree files would be overwritten"): Godot writes a `.uid` next to each
+   script and shader it opens, so a player's PC often has one before the commit that tracks it. Remove Godot's
+   `.uid`/`.import` files and identical copies, move anything else to `<file>.local`, never delete a user's
+   file. Commit every `.uid` with its script; ignore `.import`. Observed on Tron, 2026-10-10:
+   `game/tools/bake_fonts.gd.uid` stopped the Windows update (Tron-Legacy-MPF PR #43 has the bash and
+   PowerShell functions).
 5. **Settings by environment**, one prefix per game (Tron `TRON_`, Transformers `TF_`): `<P>_DIR` (install
    folder), `<P>_BRANCH`, `<P>_REPO`, `<P>_ASSETS_REPO` when there is a second repository, `<P>_GITHUB_TOKEN`.
 6. **Tests**: every installer runs in its dry-run mode in `tests/test_install.py` (Linux families, macOS plan,
@@ -220,5 +227,5 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-12 (Xavier NX power modes and hitches, submodules on a reused board; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-12 (Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
