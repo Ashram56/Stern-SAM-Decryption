@@ -128,6 +128,24 @@ for merges.
 - Regenerating media deletes Godot's `.import` files; reimport after. Generated media is git-ignored, so
   after any pull it is stale: stamp the inputs and regenerate automatically on launch.
 
+### GMC + Godot performance on a slow target [GMC] [Godot]
+A Jetson Xavier NX cabinet (4 cores at 1.9 GHz, CPU and GPU sharing 6.8 GB) runs the DMD, three PuP videos and the
+light cycles in one Godot process: every window freezes together when Godot's main thread stalls. Measured on
+Tron (full game, 2026-10-12); method and figures in [agents/improvement.md](../agents/improvement.md) section 2a.
+
+| Practice | Why (Tron's measurement) |
+|---|---|
+| Measure before guessing: frame times from a probe, MPF's log, and per-slide timing (`node_added` / `ready` / next frame / `frame_post_draw`) against a baseline frame | 67 of 68 hitches were slide shows; the guessed causes (light cycles, videos, power mode) were not |
+| Never block the main thread on a worker (`wait_for_task_completion`, a `load()` of something still loading); hand the object to the worker or poll `is_task_completed()` | A video switch waiting for a loop restart froze every screen 0.3-0.6 s |
+| Theme overrides (`add_theme_*_override`) are not setters: set them once, never on every update, and not on nodes whose own drawing is hidden | About 25 ms per slide shown; hitches 46 to 6-12 |
+| Creating node trees during play is the expensive part of a slide; GMC caches the PackedScene, not the nodes. Prefer few persistent nodes changed in place (pooled slides, or one display node drawing from data) | A new slide's first frame still costs about 25 ms over a normal one |
+| Keep display content file-driven (pictures by path, timing and text as data) so higher-resolution or replacement art needs no code | The HD frames already swap in by path; a data-driven display keeps that and drops per-show nodes |
+| Load on worker threads at start-up, in display order, a few at a time; VRAM-compress pictures nobody reads back; bake fonts at setup | Effect stalls 0.9 s to under 0.1 s; MSDF freezes of 20 s gone |
+| Text: shape once (`TextLine`) and draw it; avoid a `Label` plus helper nodes per line | Fewer nodes per slide, no Label layout per update |
+| A separate process per screen group (game + DMD; PuP videos) isolates freezes but costs a second Vulkan context and 300-500 MB; fix the stalls at their source first | - |
+| Power mode: per-core clock beats core count on the main thread (Xavier NX mode 5, 4 x 1.91 GHz, over mode 8, 6 x 1.42 GHz) | Mode 8: same FPS, more hitches |
+| Memory: budget the whole board (OS + MPF + Godot + video memory, shared on a Jetson) and soak-test a full hour: Godot grew 1.4 to 2.0 GB in one 10-minute game | Target set by Tron's owner: under 4 GB where it costs no stutter |
+
 ### Portability
 - utf-8 and LF for every generated file, `/` in `res://` paths, long paths on Windows.
 - OneDrive folders: deletes/renames fail transiently; wrap them in retries (`scripts/fsutil.py`), and in
