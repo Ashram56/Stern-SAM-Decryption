@@ -100,11 +100,11 @@ for merges.
 
 ### MPF 0.80 [MPF]
 - Generated YAML needs `#config_version=6` as the first line; the asset package's files lack it.
-- Without a terminal start `mpf game . -t` (no curses UI). Never pass `-b`: it disables BCP, MPF Monitor's server with it.
+- Without a terminal start `mpf game . -t` (no curses UI). Don't pass `-b`: it stops MPF's connection to GMC (no display or sound). In MPF 0.80.1 the BCP servers, MPF Monitor's on 5051 among them, start whatever `-b` says (code, `mpf/core/bcp/bcp.py`; corrected 2026-10-12, it was written that `-b` stops the monitor's server too).
 - MPF always serves BCP on 127.0.0.1:5051 (MPF Monitor's port) and **waits for GMC on 5050**: start Godot first.
 - `bcp_trigger()` only reaches clients that registered the event name; GMC registers none for sounds,
   so every sound was dropped. Use `bcp_trigger_client()` addressed to `local_display`.
-- Duplicate YAML keys are silently merged (PyYAML keeps the last): an early package lost 8 switches and 8 lamps that way. Check generated YAML for duplicates.
+- Duplicate YAML keys: MPF's own loader (ruamel, `typ='safe'`) refuses them with `DuplicateKeyError`, but a generator writing YAML through PyYAML merges them silently (it keeps the last): an early asset package lost 8 switches and 8 lamps in that step, before MPF saw the file. Check generated YAML for duplicates (observed on ruamel.yaml 0.18.6, 2026-10-12).
 - An autofire device marks the playfield active itself; remove `playfield_active` from those switches.
 - `driverboards: sternSAM` goes under `hardware:`; under `p_roc:` MPF lowercases it and pypinproc rejects it.
 - Platform classes use `__slots__`: patch at class level, not per instance.
@@ -121,6 +121,7 @@ for merges.
 - When the last slide ends GMC falls back to its base slide. The ROM never clears the DMD: keep the last
   frame until the next effect.
 - `--headless` draws nothing: render under Xvfb with `--rendering-driver opengl3`.
+- A project never opened in the editor (no `.godot/` class cache, e.g. fresh from git) fails at start: `Could not find type "MPFDisplay"`, the MPF autoload does not load, GMC never listens. Import it first, twice: `godot --headless --path GAME --import` (observed, Godot 4.6.3 + GMC 1.0.0).
 - `--write-movie` runs faster than real time, MPF never connects: capture with a real-time autoload
   (`game/tools/dmd_capture.gd`, inert without `--capture-dir=`).
 - Probing port 5050 with a connection makes GMC quit: probe by trying to bind, and probe IPv6 too

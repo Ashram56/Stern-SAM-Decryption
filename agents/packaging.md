@@ -13,6 +13,13 @@ scripts, rename, and keep them in step. File paths in `code` are the Tron game r
 "Packaging" here is the game's **install and run kit**. It is not the ROM extraction's MPF asset package
 (`mpf_package/`, agent A's `AGENTS.md` section 10) and not the game itself (agent C).
 
+> **The game-agnostic kit:** [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) installs
+> MPF, MPF Monitor, Godot and the patched GMC with one line per OS (Jetson included), documents every fix to MPF,
+> GMC, Godot and the video add-ons one file each with an upstream issue draft (`fixes/`), and every platform finding
+> (`platforms/`). Take new pins, patches and installer lessons from there and add new ones there; a game's kit
+> (below) keeps only what is the game's own. A game can point its launcher at that toolchain (`GODOT`, the venv) or
+> copy the patched GMC with `python -m mpf_godot addons GAME` (2026-10-12).
+
 ## 1. What this agent owns
 
 Every file below is this agent's, in the game repo. Other agents may add a feature flag to `setup.py` or
@@ -227,5 +234,5 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-12 (Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-12 (the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
