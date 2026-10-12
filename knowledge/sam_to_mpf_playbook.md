@@ -146,6 +146,32 @@ Tron (full game, 2026-10-12); method and figures in [agents/improvement.md](../a
 | Power mode: per-core clock beats core count on the main thread (Xavier NX mode 5, 4 x 1.91 GHz, over mode 8, 6 x 1.42 GHz) | Mode 8: same FPS, more hitches |
 | Memory: budget the whole board (OS + MPF + Godot + video memory, shared on a Jetson) and soak-test a full hour | Tron: Godot 1.46 GB at start, about 2.0 GB after the first game, then flat for 6 games (2.02 GB peak); board 3.7 GB peak. Owner's target: under 4 GB where it costs no stutter |
 
+**A display drawn from data (Tron, 2026-10-12).** Tron's display effects went from node scenes to data in two steps,
+each switchable for A/B runs; what worked:
+
+- **Pool the slides first** (cheap, safe): override `MPFSlide.remove()` to park the slide out of the tree instead of
+  `queue_free()`, and patch GMC's `get_slide_instance()` to take one back. Godot keeps a node's canvas items and
+  shaped text while it is out of the tree. Two traps: GMC's `initialize` awaits `ready`, so call `request_ready()`
+  on a reused slide; `MPFVariable` updaters unregister in `_exit_tree`, so snapshot each slide's `_updaters` (and its
+  nested scenes') before removing and restore them after. Reset every timed node to time 0 with no values, and test
+  that a reused slide renders exactly as a new one.
+- **Then one picture per screen**: generate each effect as data (rectangles, a frame list naming picture files,
+  text lines with their ROM layout) next to its node scene; keep each effect's GMC slide as one node holding time
+  and values, so priorities, queues and expiry stay GMC's; draw the top effect's list into a fixed-size
+  `SubViewport` with `UPDATE_ONCE`, re-armed only when the list changes. Few canvas items, a fixed set of them, and
+  no render when nothing changed: on x86 software rendering the median frame fell from 29.9 to 5.8 ms.
+- **Keep the content open**: the data names pictures by path (HD twins swap in by path), and a hand-made scene
+  at a known path (Tron: `game/dmd_custom/<deff>.tscn`) replaces an effect's data, so videos or redrawn effects
+  need no code change. Keep the node scenes generated as the reference: a test renders every effect both ways and
+  compares (Tron: all 145 classic effects dot for dot).
+- **Memory comes with it**: preload only the pictures the data names (in HD, not the classic ones as well) and point
+  identical frames of different effects at one file (Tron: 417 of 4123 frame entries). Godot resident 980 to 890 MB,
+  video memory 710 to 609 MB, effects preload 9.5 to 5.3 s.
+- Godot traps met: JSON numbers load as floats (`&` on them fails; convert whole numbers back to `int`); a
+  `Font.draw_string` per line uses the font's shaped-text cache, so shaping happens once; ADD-blended glow layers
+  need their own canvas item with a `CanvasItemMaterial`; clip a zoomed line with `canvas_item_set_clip` and a
+  custom rect on its own layer.
+
 ### Portability
 - utf-8 and LF for every generated file, `/` in `res://` paths, long paths on Windows.
 - OneDrive folders: deletes/renames fail transiently; wrap them in retries (`scripts/fsutil.py`), and in
