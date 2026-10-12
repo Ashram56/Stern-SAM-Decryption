@@ -116,6 +116,14 @@ install again). Its README lists the files, the one-line hooks and every setting
   music. No ready player (no media, PuP off, tests): the ROM music plays.
 - **The DMD window**: the game's 128x32 DMD stays the source (render checks, P-ROC output unchanged); the PuP DMD
   window draws it larger in the pack's DMD frame art or a generated background.
+- **Size the DMD on the glass, not in pixels**: bar panels (1280x390, 1920x480 LCDs) often have pixels that are
+  not quite square. Take the monitor's picture size in mm as a setting, keep the DMD 4:1 in mm (height in pixels
+  = width / 4 x pixel aspect, pixel aspect = (mm wide / px wide) / (mm tall / px tall)), and offer a real DMD's
+  size (128x32 dots on 320x80 mm) as the "full size" choice. A generated background with moving parts round the
+  DMD needs room, so offer both: a smaller DMD with the background's action round it, or the DMD full size over
+  a still background, settable in the service menu. Tron: a 1280x390 bar of 360x109 mm (pixel aspect 1.0063)
+  takes a 320x80 mm DMD at 1138x286 px; with the light cycles round it the DMD is 870x219 px (Tron-Legacy-MPF
+  `docs/pup/README.md`, "DMD size").
 - **Say why the PuP is off**: `run.py` prints one line (`PuP on: ...` or what is missing). Without it, a missing
   conversion looks like a broken install (it did on Tron's first launch).
 
@@ -220,7 +228,7 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
 | Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the game's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) (the fork merged back 2026-10-10) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers; not yet on `tools/pup/runtime/` |
 | Transformers Pro 1.80 | `tf_180` v1.0 by TerryRed, private copy `Ashram56/Transformers-PuP` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `claude/pup-pack` (in the game repo, not a fork) | Built on `tools/pup/runtime/`: backglass with its five overlay boxes, DMD in the pack's art, topper, the pack's music; every capture in use mapped, each variant checked against the ROM's animation tables; GoZen with d3d11va on Windows (1080p at 4.3 ms a frame, Ryzen 7 2700), Godot 4.6.3; seen running a Blackout battle on Windows |
 
-Keep this file current. Last updated 2026-10-10 (Tron's fork merged back into the game repo: build in the game repo, optional private pack in installers; before: variants from the ROM's animation tables, not the pack's row order; before: the runtime in `tools/pup/runtime/` with GoZen on Windows,
+Keep this file current. Last updated 2026-10-12 (DMD sized in mm on bar panels, full size or with the background's action; before 2026-10-10: Tron's fork merged back into the game repo: build in the game repo, optional private pack in installers; before: variants from the ROM's animation tables, not the pack's row order; before: the runtime in `tools/pup/runtime/` with GoZen on Windows,
 conditions on arguments and the player's state, whole-frame captures, never convert; from the Transformers pack;
 before: Windows plays the pack through GoZen with GPU decoding, fork layout and sync lessons, the PuP Pack agent,
 the format page and `tools/pup/`, from the Tron work in Tron-Legacy-MPF-PuP and Tron-LE-PuP-Pack).
