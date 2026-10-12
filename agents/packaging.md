@@ -187,6 +187,11 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
   with the top CPU clock: the 15 W and 20 W 6-core modes run at 1.42 GHz, so a higher mode does not cure hitches on
   Godot's main thread (slide creation); fix those in software (improvement agent, section 2a). Tron's full game,
   2026-10-12: mode 5 56.9 FPS, 70 frames over 100 ms, 8.8 W; mode 8 56.9 FPS, 87 over 100 ms, 8.7 W (observed).
+- **Screens in standby between runs:** `run.py` turns DPMS off for play, so the backlights stay on after it exits;
+  put them to sleep with `xset +dpms; xset dpms force off`. On the Xavier NX (NVIDIA X driver, no desktop
+  environment) a sleeping monitor loses its output's mode, and `xset dpms force on` does not bring it back: redo the
+  session's `xrandr --auto` layout before the next run, or Godot sees one screen, stacks every window on it and
+  runs at 39 FPS instead of 58 (observed, Tron, 2026-10-12: a lost one-hour soak).
 - **Submodules on a board reused across sessions:** a session may have pointed a submodule at a local checkout
   (`git -C assets remote -v` shows a path); syncing then fails with `transport 'file' not allowed`. Fetch from the
   GitHub URL directly (`git -C assets fetch <url> main`, then check out `FETCH_HEAD`) instead of rewriting the

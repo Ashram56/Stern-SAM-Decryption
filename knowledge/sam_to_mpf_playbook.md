@@ -144,7 +144,7 @@ Tron (full game, 2026-10-12); method and figures in [agents/improvement.md](../a
 | Text: shape once (`TextLine`) and draw it; avoid a `Label` plus helper nodes per line | Fewer nodes per slide, no Label layout per update |
 | A separate process per screen group (game + DMD; PuP videos) isolates freezes but costs a second Vulkan context and 300-500 MB; fix the stalls at their source first | - |
 | Power mode: per-core clock beats core count on the main thread (Xavier NX mode 5, 4 x 1.91 GHz, over mode 8, 6 x 1.42 GHz) | Mode 8: same FPS, more hitches |
-| Memory: budget the whole board (OS + MPF + Godot + video memory, shared on a Jetson) and soak-test a full hour: Godot grew 1.4 to 2.0 GB in one 10-minute game | Target set by Tron's owner: under 4 GB where it costs no stutter |
+| Memory: budget the whole board (OS + MPF + Godot + video memory, shared on a Jetson) and soak-test a full hour | Tron: Godot 1.46 GB at start, about 2.0 GB after the first game, then flat for 6 games (2.02 GB peak); board 3.7 GB peak. Owner's target: under 4 GB where it costs no stutter |
 
 ### Portability
 - utf-8 and LF for every generated file, `/` in `res://` paths, long paths on Windows.
