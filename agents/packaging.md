@@ -182,8 +182,16 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
   `xset s off -dpms`). openbox without a display manager works.
 - **Sound:** the Xavier NX devkit's ALSA default is an I2S card with nothing on it; the hwdec install writes a
   `~/.asoundrc` to HDMI through dmix when there is no PulseAudio or PipeWire.
-- **Power mode:** `sudo nvpmodel -m 5` (10 W desktop, 4 cores at 1.9 GHz) or 8 (20 W). Per-core speed matters more
-  than cores; the 2- and 4-core 10 W modes are not playable. `jetson_clocks` gains nothing.
+- **Power mode:** `sudo nvpmodel -m 5` (10 W desktop, 4 cores at 1.91 GHz) or 8 (20 W). Per-core speed matters more
+  than cores; the 2- and 4-core 10 W modes are not playable. `jetson_clocks` gains nothing. Mode 5 is the only mode
+  with the top CPU clock: the 15 W and 20 W 6-core modes run at 1.42 GHz, so a higher mode does not cure hitches on
+  Godot's main thread (slide creation); fix those in software (improvement agent, section 2a). Tron's full game,
+  2026-10-12: mode 5 56.9 FPS, 70 frames over 100 ms, 8.8 W; mode 8 56.9 FPS, 87 over 100 ms, 8.7 W (observed).
+- **Submodules on a board reused across sessions:** a session may have pointed a submodule at a local checkout
+  (`git -C assets remote -v` shows a path); syncing then fails with `transport 'file' not allowed`. Fetch from the
+  GitHub URL directly (`git -C assets fetch <url> main`, then check out `FETCH_HEAD`) instead of rewriting the
+  remote, and copy a private submodule's content (a PuP Pack) from the old checkout when the board has no
+  credentials for it (observed, Tron on the Xavier NX, 2026-10-12).
 - **Screens:** the devkit's DisplayPort has no DP++ mode, so a passive DP to HDMI adapter never works (an active
   one does); the USB-C port has no video. A panel's EDID refresh rate cannot be overridden (`CustomEDID` is
   ignored). Cabinet placement goes in the untracked `game/pup.local.cfg`, never in the tracked defaults.
@@ -207,5 +215,5 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-10 (PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-12 (Xavier NX power modes and hitches, submodules on a reused board; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).

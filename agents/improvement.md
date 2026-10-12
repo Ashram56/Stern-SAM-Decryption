@@ -73,6 +73,14 @@ to worker threads at start-up.
 | Rendering on the main thread | Godot's separate render thread is opt-in here (`run.py --render-thread` / `TRON_RENDER_THREAD=1`; never for the captures, opengl3): with Godot 4.5.2 and the DMD alone it was slower (54.3 vs 56.2 FPS, twice the late frames, glyph texture update errors). The PuP repo (Godot 4.6.3, three videos) turns it on (`thread_model=2`): main thread 54% to 29% of a core, +2 to 3 FPS. Measure again on each Godot upgrade | Here: +1.9 FPS off; PuP: +2 to 3 FPS on |
 | Background loads got one worker thread on 4 cores | `threading/worker_pool/low_priority_thread_ratio=0.5` | Shorter stalls when several loads overlap |
 
+**Finding what causes a hitch.** Godot's frame times (the perf probe's `frames.csv`, time since Godot started) and
+MPF's log (wall clock) have no common clock. Search the offset (in 0.1 s steps over +-20 s) that puts the most
+frames over 100 ms within 0.5 s after an MPF event, then rank event names by how many hitches they explain against
+how often they fire, and compare with random times. On Tron (full game, Xavier NX mode 5, 2026-10-12) 67 of 68
+hitches of 100-150 ms fell just after a `slide_deff_N_created` (15% for random times; offset 4.7 s), spread over
+36 different effects, while video opens explained 11: after every fix above, slide creation on the main thread is
+still the remaining hitch, about 40% of creations costing 100-150 ms (observed).
+
 When adding media: a new kind of picture loaded by a slide gets a VRAM-compressed import unless a script reads its
 pixels; a new effect with 40+ frames is preloaded automatically; a new font goes through `bake_fonts.gd`. After
 changing any of these, run setup (media regeneration and font bake) before measuring.
@@ -88,4 +96,4 @@ Ask the owner before starting any idea listed there as not built.
 and pictures at 1920x480 and 3840x960 for the owner (render through Xvfb with `--rendering-driver opengl3`;
 `--headless` draws nothing). Bump `frame_text.VERSION` when the text matching changes (it keys the cache).
 
-Last updated 2026-10-10 (display options in the service menu; moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).
+Last updated 2026-10-12 (finding what causes a hitch; display options in the service menu; moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).
