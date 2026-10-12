@@ -159,14 +159,16 @@ each switchable for A/B runs; what worked:
   text lines with their ROM layout) next to its node scene; keep each effect's GMC slide as one node holding time
   and values, so priorities, queues and expiry stay GMC's; draw the top effect's list into a fixed-size
   `SubViewport` with `UPDATE_ONCE`, re-armed only when the list changes. Few canvas items, a fixed set of them, and
-  no render when nothing changed: on x86 software rendering the median frame fell from 29.9 to 5.8 ms.
+  no render when nothing changed: on x86 software rendering the median frame fell from 29.9 to 5.8 ms; on the Xavier
+  NX (full game, mode 5) frames over 2 vblanks fell from 139 to 14, over 100 ms from 6 to 1, GPU 60% to 43%, 8.8 to 7.2 W.
 - **Keep the content open**: the data names pictures by path (HD twins swap in by path), and a hand-made scene
   at a known path (Tron: `game/dmd_custom/<deff>.tscn`) replaces an effect's data, so videos or redrawn effects
   need no code change. Keep the node scenes generated as the reference: a test renders every effect both ways and
   compares (Tron: all 145 classic effects dot for dot).
 - **Memory comes with it**: preload only the pictures the data names (in HD, not the classic ones as well) and point
   identical frames of different effects at one file (Tron: 417 of 4123 frame entries). Godot resident 980 to 890 MB,
-  video memory 710 to 609 MB, effects preload 9.5 to 5.3 s.
+  video memory 710 to 609 MB, effects preload 9.5 to 5.3 s on x86; on the Xavier NX video memory 627 to 545 MB,
+  board peak 3.61 to 3.50 GB.
 - Godot traps met: JSON numbers load as floats (`&` on them fails; convert whole numbers back to `int`); a
   `Font.draw_string` per line uses the font's shaped-text cache, so shaping happens once; ADD-blended glow layers
   need their own canvas item with a `CanvasItemMaterial`; clip a zoomed line with `canvas_item_set_clip` and a
