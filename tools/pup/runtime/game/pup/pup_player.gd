@@ -36,6 +36,7 @@ var music_screen := -1
 var _next := {}                     # playlist -> next index (AlphaSort playlists)
 var _last := {}                     # playlist -> last pick (random playlists)
 var _audio_cache := {}
+var _audio_lock := Mutex.new()      # _audio_cache: the music preload fills it on a worker (_preload_audio())
 ## Which add-on plays the pack's mp4s without conversion (_pick_video_player()), else Godot plays Theora copies:
 ## - GDE GoZen (Linux and Windows): FFmpeg decoding on the GPU (Direct3D 11 Video / DXVA2 on Windows, the Jetson's
 ##   decoder with libnvmpi); the screens then use gozen_player.gd;
@@ -172,6 +173,7 @@ func _build() -> void:
 			"bg_playlist": row.get("PlayList", ""), "bg_file": row.get("PlayFile", "")})
 		add_child(music)
 		screens[music_screen] = music
+		_preload_audio()
 	for n in screens:
 		screens[n].start_background()
 	if windows.has(_dmd_name) and bool(setting(_dmd_name, "hide_main_window", true)):
@@ -465,8 +467,44 @@ func aspect_of(path: String) -> float:
 
 
 func load_audio(path: String) -> AudioStream:
-	if _audio_cache.has(path):
-		return _audio_cache[path]
+	_audio_lock.lock()
+	var kept = _audio_cache.get(path)
+	_audio_lock.unlock()
+	if kept != null:
+		return kept
+	return _read_audio(path)
+
+
+## The pack's music (mp3, ogg) read and decoded on a worker at start, one file after the other, so no first play
+## reads it on the main thread (20-60 ms per mp3 on a Jetson Xavier NX). Memory: the same as after a game that played them
+## all, since every played stream stays cached anyway.
+func _preload_audio() -> void:
+	var paths: Array[String] = []
+	for key in manifest:
+		if key.get_extension().to_lower() in ["mp3", "ogg"]:
+			var path := media_path(key)
+			if path != "":
+				paths.append(path)
+	if paths.is_empty():
+		return
+	WorkerThreadPool.add_task(func():
+		var t0 := Time.get_ticks_msec()
+		var bytes := 0
+		for path in paths:
+			var stream := _read_audio(path)
+			if stream is AudioStreamMP3:
+				bytes += stream.data.size()
+		print("PuP: %d music files preloaded (%.1f MB) in %d ms" % [
+			paths.size(), bytes / 1048576.0, Time.get_ticks_msec() - t0]),
+		false, "PuP music preload")
+
+
+func _read_audio(path: String) -> AudioStream:
+	_audio_lock.lock()
+	var kept = _audio_cache.get(path)
+	_audio_lock.unlock()
+	if kept != null:
+		return kept
 	var data := FileAccess.get_file_as_bytes(path)
 	if data.is_empty():
 		push_warning("PuP: cannot read %s" % path)
@@ -478,7 +516,12 @@ func load_audio(path: String) -> AudioStream:
 			stream.data = data
 		"ogg":
 			stream = AudioStreamOggVorbis.load_from_buffer(data)
-	_audio_cache[path] = stream
+	_audio_lock.lock()
+	if _audio_cache.has(path):          # read on both threads at once: keep the first
+		stream = _audio_cache[path]
+	else:
+		_audio_cache[path] = stream
+	_audio_lock.unlock()
 	return stream
 
 
