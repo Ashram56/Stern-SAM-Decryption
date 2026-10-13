@@ -200,9 +200,14 @@ each switchable for A/B runs; what worked:
   (lamp matrix) are enabled: a `C33`+ address decodes to an inactive driver, never to an aux-bus output.
 - Dimming on a P-ROC with SAM boards (code, Tron 2026-10-13): libpinproc's only PWM is the FPGA's patter, whole
   milliseconds on and off (pulse up to 255 ms; `schedule` is a 32-slot blink pattern, not PWM). Its LED colour
-  and fade calls are for Multimorphic PD-LED boards only. The SAM lamp matrix is strobed 1 ms per row, 8 rows
-  (libpinproc defaults; MPF's `lamp_matrix_strobe_time` applies to PDB boards only). MPF dims a matrix lamp with
-  a patter of at most 20 ms period (0.5 = 1 on / 1 off). Inferred: that period beats against the 8 ms strobe,
+  and fade calls are for Multimorphic PD-LED boards only. The lamp matrix scan is set per driver group by
+  `slowTime`, in microseconds (libpinproc's `pinproctest/drivers.cpp`: `startStrobeTime` is obsolete, the
+  matrix loops as fast as the groups' slow times add up). libpinproc's Stern defaults: 16 lamp groups (10-25)
+  of 400 us, two groups per strobe line, so a lamp gets 400 us in a ~6.4 ms loop (inferred from the config;
+  stock SAM is 10 lines of 1 ms). `slowTime` can be changed after start with pypinproc
+  `driver_update_group_config` (custom code; MPF's `lamp_matrix_strobe_time` only reaches PDB boards); the
+  FPGA's lower limit is not documented. MPF dims a matrix lamp with a patter of at most 20 ms period (0.5 = 1 on
+  / 1 off). Inferred: a whole-millisecond patter against that loop gives uneven duty,
   so dimmed matrix LEDs flicker or snap to full/off; keep matrix lamps on/off as the ROM does, and do any LED
   fading in a show at full steps or on hardware built for it (the RGB tubes: aux-bus bit planes, as the ROM).
 - MPF's p_roc platform treats `SD0`-`SD7` as "first eight direct inputs" (PDB meaning); harmless on SAM,
