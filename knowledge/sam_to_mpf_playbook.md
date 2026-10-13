@@ -187,6 +187,19 @@ each switchable for A/B runs; what worked:
 - P-ROC numbers (libpinproc `PRDecode`, SternSAM): matrix n → `32 + 8*((n-1)/8) + 7-((n-1)%8)` when
   `(n-1)%16 < 8`, else `32 + n-1`; dedicated n → `n+7`; coil n → `n+31`; lamp n →
   `80 + 16*(7-((n-1)%8)) + (n-1)/8`. Generate the address file, never hand-write it.
+- libpinproc to build (code, checked 2026-10-13 on Tron): `preble/libpinproc` branch `dev` (v2.1, last commit
+  286c566, 2020-08, Multimorphic) is the newest; `missionpinball/libpinproc` is an older snapshot (34 commits
+  behind, one warning fix ahead) with the same SAM code. Pair it with `missionpinball/pypinproc` (Python 3).
+- `PRDecode` strings must be exactly 2 digits: `S05`, `C05`, `L05`, `SD3` or `SD03`. `S5`, `C5`, `L5` silently
+  decode to 0 (atoi), a bare integer is taken as a raw P-ROC number, `S100` decodes to 40. Test the generated
+  addresses against a port of `PRDecode` (Tron: `tests/test_proc.py`, identical to the compiled C on 351 strings).
+- libpinproc safety on SAM (code): it refuses to open when the board's Stern/WPC setting disagrees with the
+  machine type (`PRDevice::Create`; the comment in `PRHardwareOpen` saying there is no check is stale), it
+  rejects a driver polarity that differs from the Stern default (active high), it tickles the IO board's
+  watchdog and arms the P-ROC's own (1 s, MPF `use_watchdog`). Only driver groups 4-7 (coils 1-32) and 10-25
+  (lamp matrix) are enabled: a `C33`+ address decodes to an inactive driver, never to an aux-bus output.
+- MPF's p_roc platform treats `SD0`-`SD7` as "first eight direct inputs" (PDB meaning); harmless on SAM,
+  whose numbers never use the `x/y` matrix form that conflicts with it.
 - Flippers: 40 ms pulse, hold 1 ms every 12 ms (`default_hold_power: 0.083`). Slings and pops are fired
   by CPU software on SAM; on a P-ROC make them hardware rules.
 - Coil pulse widths live in the ROM's coil table and hardware rules (decoded for Tron: generate the MPF
