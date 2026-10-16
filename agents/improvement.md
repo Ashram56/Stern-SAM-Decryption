@@ -95,6 +95,25 @@ When adding media: a new kind of picture loaded by a slide gets a VRAM-compresse
 pixels; a new effect with 40+ frames is preloaded automatically; a new font goes through `bake_fonts.gd`. After
 changing any of these, run setup (media regeneration and font bake) before measuring.
 
+## 2b. Scorbit and Wi-Fi from the service menu (built on Tron)
+
+[Scorbit](https://scorbit.io) (live scores, claims, leaderboards) through its SDK, and a Wi-Fi menu so a cabinet
+can join a network with the coin-door buttons. Both are game items added to the ROM's service menu (a row in
+`rom_differences.md`); nothing in play changes. Tron: `game/tron/scorbit.py`, `game/tron/network.py`, the
+screens in `game/tron/service.py`, `docs/scorbit.md`, `docs/network.md`, `tests/test_network.py`.
+
+| Fact (tag) | What to do |
+|---|---|
+| The SDK ([scorbit-io/scorbit_sdk](https://github.com/scorbit-io/scorbit_sdk), 2.0.4) is a pure-Python `ctypes` wrapper on PyPI (`scorbit`) plus a native library from the GitHub release of the **same** version; the release has Linux builds only (`scorbit_sdk-<v>-{amd64,arm64}_u18.tar.gz`, `armhf_u12`), no Windows or macOS (observed) | Install both from the packaging step behind an option (Tron: `setup.py --scorbit`, library flat in `tools/scorbit/lib`); point the wrapper at it with `SCORBIT_SDK_PATH` before `import scorbit`. The library needs only glibc. Elsewhere the game runs without it and the menu says why. |
+| `create_game_state` **aborts the whole process** (`std::length_error`, uncatchable) when the encrypted key's base64 is cut short (a length not a multiple of 4); a well-formed wrong key only fails authentication (observed, SDK 2.0.4) | Check the key first: `base64.b64decode(key, validate=True)` and at least 44 bytes (salt 16 + IV 12 + tag 16, `source/utils/decrypt.cpp`); show `KEY IS NOT BASE64` instead of starting. |
+| Credentials are per game maker: provider name, encrypted provider key, machine id (support@scorbit.io); the SDK then keeps a device key through save/load callbacks (code) | Never in a repo: a public `scorbit.cfg` with empty keys and a git-ignored `scorbit.local.cfg`; the device key in a 0600 file under git-ignored `data/`. |
+| Callbacks (events, pair code, unpair) run on SDK threads; an `Event` is valid only during its callback (code) | Parse the event inside the callback into plain values behind a lock; the MPF clock reads them. Never touch MPF from an SDK thread. |
+| The SDK diffs nothing for you: each `set_*` call is queued and `commit()` sends (code) | On the MPF clock (0.5 s), compare scores, active player, ball and modes with what was sent; call setters and one `commit()` only when something changed. `set_game_started` on MPF's `game_started`, `set_game_finished` (it commits) on `game_ended` after a last tick. Modes as `MB:<name>` for multiballs (the SDK's own example category). |
+| The pairing deeplink is about 230 characters: its QR code (version 10, 57 modules) cannot fit a 32-dot DMD (code: `PAIRING_DEEPLINK`) | Use `request_pair_code`: a 6-character code for the Scorbit app, shown in a big ROM font. |
+| Wi-Fi backends differ per cabinet: desktop Linux runs NetworkManager (`nmcli`), the Jetson image runs systemd-networkd + `wpa_supplicant@wlan0` with no NetworkManager (Tron's image build) | Pick at run time: `nmcli` when `/run/NetworkManager` exists, else `wpa_cli` on the first socket in `/run/wpa_supplicant`, else "not available". Run every call in a worker thread; the screen polls it on the MPF clock. |
+| `wpa_cli` needs the control socket's group (`ctrl_interface=... GROUP=sudo`) and `update_config=1` to save; `nmcli` needs polkit outside a desktop session (inferred from the configs; not yet run on a cabinet) | With `wpa_cli`, hash the PSK yourself (`pbkdf2_hmac("sha1", pw, ssid, 4096, 32)`, as `wpa_passphrase`; test vector "password"/"IEEE" = `f42c6fc5...`) so the password is never on a command line or in the file; `select_network`, poll `status` for `COMPLETED`, then `enable_network all` and `save_config`; remove the network again if it failed (`4WAY_HANDSHAKE` seen = wrong password). |
+| SAM ROM fonts have capitals only (Tron: all 44 fonts, no lower case) (observed) | Text entry for case-sensitive input (passwords): lower case as small capitals (a smaller ROM font) beside capitals, and a line naming the kind of the character being chosen (LOWER CASE, UPPER CASE, NUMBER, the symbol's name when no font has its glyph). MINUS / PLUS change it (held: auto-repeat), SELECT adds, BACK deletes, the flipper buttons jump between kinds, an END entry finishes. |
+
 ## 3. Owner decisions and ideas not built
 
 Per game, on its game page, with dates (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md)).
@@ -106,4 +125,4 @@ Ask the owner before starting any idea listed there as not built.
 and pictures at 1920x480 and 3840x960 for the owner (render through Xvfb with `--rendering-driver opengl3`;
 `--headless` draws nothing). Bump `frame_text.VERSION` when the text matching changes (it keys the cache).
 
-Last updated 2026-10-12 (finding what causes a hitch; display options in the service menu; moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).
+Last updated 2026-10-16 (Scorbit and Wi-Fi from the service menu, section 2b; before: finding what causes a hitch; display options in the service menu; moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).

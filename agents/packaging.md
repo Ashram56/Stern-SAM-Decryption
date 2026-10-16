@@ -22,7 +22,7 @@ then carries it into every installer, the one-line commands, Docker, CI and the 
 | File (Tron) | What it does |
 |---|---|
 | `scripts/toolchain.py` | the pinned versions (Python, MPF, Godot, GMC, MPF Monitor, extra packages per option) and every per-OS path; standard library only |
-| `scripts/setup.py` | the workspace on any OS: assets submodule, `.venv/`, Godot for the host, GMC (patched), MPF Monitor and its missing `.ui` files, generated config and media, Godot import. Idempotent; `--dry-run`, `--os/--arch` plan for another host; `--no-monitor`, `--vpx`, `--skip-godot`, `--skip-media`, `--upgrade` |
+| `scripts/setup.py` | the workspace on any OS: assets submodule, `.venv/`, Godot for the host, GMC (patched), MPF Monitor and its missing `.ui` files, generated config and media, Godot import. Idempotent; `--dry-run`, `--os/--arch` plan for another host; `--no-monitor`, `--vpx`, `--scorbit` (Scorbit SDK wrapper + its Linux-only native library, improvement.md 2b), `--skip-godot`, `--skip-media`, `--upgrade` |
 | `scripts/run.py` | starts Godot (GMC, BCP 5050) first, then MPF, optionally MPF Monitor; one option per hardware target (`--hw virtual/proc/vpx`, `--machine`, `--monitor`); stale media regenerated on launch; Xvfb on Linux without a display |
 | `scripts/install/install_prereqs_windows.ps1` | Windows 10/11, PowerShell 5.1 or 7: Git, Python 3.11 (winget or the official installers), long paths, the clone, `setup.py`; `-Proc` (VC++ runtime, FTDI check). Transformers adds `-Vpx` / `-Table` (section 4) |
 | `scripts/install/install_prereqs_macos.sh` | macOS 12+, Intel or Apple silicon: Homebrew or python.org 3.11, Git, `setup.py`; `--proc` |
@@ -227,5 +227,5 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-12 (Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-16 (setup.py --scorbit; before: Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
