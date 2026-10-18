@@ -12,7 +12,8 @@ Game agnostic (VPX 10.x tables). The .vpx is only read. OUTDIR gets:
                         collections: {name: [member names]} (vpmMapLights reads one)
     switches_all.csv    switch candidates: triggers, targets, kickers, bumpers, spinners, gates, flippers,
                         plungers, and walls/rubbers/primitives with hit events
-    lights_all.csv      lights and flashers (timer_interval is the lamp number on vpmMapLights tables)
+    lights_all.csv      lights and flashers (timer_interval is the lamp number on vpmMapLights tables; color /
+                        color2 = the light's colour and full (centre) colour, #rrggbb: an insert's lit colour)
     monitor_draft.yaml  an MPF Monitor layout with VPX names (rename to the machine config's devices)
     overlay.png         markers and names drawn on the playfield: look at it before trusting any position
 
@@ -181,6 +182,9 @@ def read_item(data):
                 item["hit_event"] = i32(p) != 0
             elif tag == "TMIN":
                 item["timer_interval"] = i32(p)
+            elif tag in ("COLR", "COL2"):       # Light: colour (falloff) / full colour (centre); Flasher: colour (0x00BBGGRR)
+                c = struct.unpack_from("<I", p)[0]
+                item["color" if tag == "COLR" else "color2"] = "#{:02x}{:02x}{:02x}".format(c & 255, (c >> 8) & 255, (c >> 16) & 255)
             elif tag in ("IMAG", "SURF"):
                 item[tag.lower()] = astr(p)
         except struct.error:
@@ -315,7 +319,7 @@ def main(argv=None):
     sw_rows = [dict(it, vpx=it["name"], x=round(it["x"], 1), y=round(it["y"], 1)) for it in sw]
     li_rows = [dict(it, vpx=it["name"], x=round(it["x"], 1), y=round(it["y"], 1)) for it in li]
     write_csv(os.path.join(args.outdir, "switches_all.csv"), sw_rows, cols)
-    write_csv(os.path.join(args.outdir, "lights_all.csv"), li_rows, cols)
+    write_csv(os.path.join(args.outdir, "lights_all.csv"), li_rows, cols + ["color", "color2"])
     with open(os.path.join(args.outdir, "items.json"), "w", encoding="utf-8") as f:
         json.dump({"bounds": [left, top, left + w, top + h], "playfield_image": pf and pf.get("NAME"),
                    "items": items, "collections": collections}, f, indent=1)

@@ -45,6 +45,12 @@ Columns: `ScreenNum, ScreenDes, PlayList, PlayFile, Loopit, Active, Priority, Cu
   panel art). (inferred from the packs and `Option Selected.jpg`)
 - Screen numbers are the pack author's choice; read them, don't assume them. Decide per screen which window of
   the game shows it (Tron: 2 + 12 backglass, 13 + 14 topper, 15 music only).
+- A clean still of a screen's art (for a service or status page drawn over it): packs rarely ship one
+  (Tron: `PuPFrames` holds a cabinet layout picture, not the backglass). The background loop has it: only the
+  inside of the frame and the glow move, so the per-pixel **median** of the loop's frames (ffmpeg at 4 fps, then
+  numpy `median(axis=0)`) is a clean still, and the per-pixel standard deviation shows which areas move. Make it
+  at install time from the installed pack; never commit it. (observed: Tron `Background - Backglass/TronLegacyBG.mp4`,
+  1920x1080, 61 frames over 15 s)
 - Screens set `off` by the shipped option may be the pack's optional displays (Tron: the topper; the pack's
   `Option Selected.txt` says to set them to `ForceBack` / `ForcePop` when a topper exists). (observed)
 
@@ -133,5 +139,5 @@ A pack is made against one ROM version: its captures are that version's frames. 
 release of the pack, can change captures or rows: re-run the match and the decode, and fix the map lines that
 change. Record the pack's version and author with the game. (inferred)
 
-Last updated 2026-10-10 (from the Tron pack's decoding in Tron-LE-PuP-Pack and the Tron-Legacy-MPF-PuP player; whole-frame
+Last updated 2026-10-18 (median still of a background loop; from the Tron pack's decoding in Tron-LE-PuP-Pack and the Tron-Legacy-MPF-PuP player; whole-frame
 captures, effects with several animations, CustomPos boxes and PuPOverlays from the Transformers pack).
