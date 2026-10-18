@@ -35,6 +35,14 @@ def test_item_position_ignores_drag_points():
     assert item["timer_interval"] == 45 and item["drag_points"] == 1
 
 
+def test_light_colours_are_read_as_rgb():
+    data = (struct.pack("<i", 7) + rec("VCEN", floats(1, 2)) + rec("NAME", wname("l45"))
+            + rec("COLR", struct.pack("<I", 0x0018e9c5 & 0xffffff)) + rec("COL2", struct.pack("<I", 0x00ffffff))
+            + rec("ENDB"))
+    item = vpx_extract.read_item(data)
+    assert item["color"] == "#c5e918" and item["color2"] == "#ffffff"
+
+
 def test_wall_without_centre_uses_its_drag_points():
     data = (struct.pack("<i", 0) + rec("NAME", wname("sw01")) + rec("DPNT") + rec("VCEN", floats(0, 0))
             + rec("ENDB") + rec("DPNT") + rec("VCEN", floats(4, 2)) + rec("ENDB") + rec("ENDB"))
