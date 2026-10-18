@@ -177,7 +177,8 @@ each switchable for A/B runs; what worked:
 ### Portability
 - utf-8 and LF for every generated file, `/` in `res://` paths, long paths on Windows.
 - OneDrive folders: deletes/renames fail transiently; wrap them in retries (`scripts/fsutil.py`), and in
-  shared caches keep the existing file when a replace races another worker.
+  shared caches keep the existing file when a replace races another worker, and treat a cache entry that
+  cannot be opened (another worker is replacing it: PermissionError on Windows) as a miss, not a failure.
 
 ### SAM hardware [SAM]
 - Dedicated switches use SAM numbering D1-D24 (PinMAME `sam.c`): coin 3, flippers/EOS 9-12, upper EOS 14,
