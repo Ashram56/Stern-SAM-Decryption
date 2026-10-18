@@ -13,7 +13,7 @@ Game agnostic (VPX 10.x tables). The .vpx is only read. OUTDIR gets:
     switches_all.csv    switch candidates: triggers, targets, kickers, bumpers, spinners, gates, flippers,
                         plungers, and walls/rubbers/primitives with hit events
     lights_all.csv      lights and flashers (timer_interval is the lamp number on vpmMapLights tables; color /
-                        color2 = the light's colour and full (centre) colour, #rrggbb: an insert's lit colour)
+                        color2 = the light's colour and full (centre) colour, #rrggbb; the insert's colour is color, brightened)
     monitor_draft.yaml  an MPF Monitor layout with VPX names (rename to the machine config's devices)
     overlay.png         markers and names drawn on the playfield: look at it before trusting any position
 
