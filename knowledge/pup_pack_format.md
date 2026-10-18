@@ -49,8 +49,16 @@ Columns: `ScreenNum, ScreenDes, PlayList, PlayFile, Loopit, Active, Priority, Cu
   (Tron: `PuPFrames` holds a cabinet layout picture, not the backglass). The background loop has it: only the
   inside of the frame and the glow move, so the per-pixel **median** of the loop's frames (ffmpeg at 4 fps, then
   numpy `median(axis=0)`) is a clean still, and the per-pixel standard deviation shows which areas move. Make it
-  at install time from the installed pack; never commit it. (observed: Tron `Background - Backglass/TronLegacyBG.mp4`,
-  1920x1080, 61 frames over 15 s)
+  at install time from the installed pack; never commit it. ffmpeg alone does it, no numpy:
+  `-vf fps=F,tmedian=radius=R -frames:v 1` with R = (frames - 1) / 2, at most 127 (255 frames), outputs the one
+  median frame. (observed: Tron `Background - Backglass/TronLegacyBG.mp4`, 1920x1080, 61 frames over 15 s;
+  Tron-Legacy-MPF `scripts/pup/gen_pup.py` `make_still`)
+- Drawing a page over a PuP window in Godot (Tron's service menu on the backglass): draw it once per change at the
+  art's own size in a `SubViewport` (`UPDATE_ONCE`) and show its texture fitted as the videos are, so text is
+  rasterised at full size and nothing redraws per frame; fade with the node's `modulate`. A Control added to a
+  window that already has a size needs `set_anchors_and_offsets_preset(PRESET_FULL_RECT)`: `set_anchors_preset`
+  keeps the size it had (the window's first size) as offsets, so it stops following later resizes. Darken the
+  art only inside its neon frames (a signed-distance shader on the still) so the frames stay lit. (observed)
 - Screens set `off` by the shipped option may be the pack's optional displays (Tron: the topper; the pack's
   `Option Selected.txt` says to set them to `ForceBack` / `ForcePop` when a topper exists). (observed)
 
@@ -139,5 +147,5 @@ A pack is made against one ROM version: its captures are that version's frames. 
 release of the pack, can change captures or rows: re-run the match and the decode, and fix the map lines that
 change. Record the pack's version and author with the game. (inferred)
 
-Last updated 2026-10-18 (median still of a background loop; from the Tron pack's decoding in Tron-LE-PuP-Pack and the Tron-Legacy-MPF-PuP player; whole-frame
+Last updated 2026-10-18 (median still of a background loop, with ffmpeg tmedian; a page drawn over a PuP window; from the Tron pack's decoding in Tron-LE-PuP-Pack and the Tron-Legacy-MPF-PuP player; whole-frame
 captures, effects with several animations, CustomPos boxes and PuPOverlays from the Transformers pack).
