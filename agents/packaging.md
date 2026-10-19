@@ -230,9 +230,37 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
   (`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`, `--rendering-method mobile`, under `xvfb-run`). Tests
   that import MPF run on the board.
 
+## 5b. A signed Raspberry Pi image: design facts (not built yet)
+
+Facts found while designing a signed Raspberry Pi 4 image for Tron (2026-10-19; the design itself is on the game's
+page). Doc = Raspberry Pi's documentation read that day; inferred = reasoning, not tried.
+
+- **Signing is not secrecy.** A signed image stops a board running a changed image; it hides nothing. A
+  downloadable image can be opened on any PC, so a shared secret (a Scorbit provider key) never goes in it, signed
+  or encrypted: provision it per cabinet onto a writable data partition after flashing (inferred).
+- **"Only official images" needs the board's fuses.** On a stock Pi the SD card can always be reflashed; only a
+  board whose OTP holds the hash of your RSA-2048 key (`program_pubkey`) refuses other boot images. That is
+  permanent, and `revoke_devkey` before the bootloader is signed bricks the board (doc, `usbboot/secure-boot-recovery`).
+  On any other board, the reachable goal is signed updates (RAUC bundles) and a read-only, dm-verity system (inferred).
+- **Pi 4 (BCM2711) vs Pi 5:** on the Pi 4 the boot ROM checks the EEPROM bootloader against Raspberry Pi's key only,
+  and your key checks `boot.img`/`boot.sig` (firmware, kernel, initramfs); the BCM2712 also requires your signature
+  on the EEPROM (doc). Raspberry Pi's `rpi-sb-provisioner` supports CM4, CM4S, CM5 and Pi 5/500, **not the Pi 4
+  Model B**, which is provisioned by hand with `usbboot` and a GPIO set as RPIBOOT (`program_rpiboot_gpio=8`) (doc).
+- **Disk encryption tied to the board:** the provisioner's initramfs derives a LUKS key from a device-unique OTP secret
+  (`rpi-fw-crypto`) (doc). A root shell on the running board can still read the data, so a locked board ships with no
+  login (inferred).
+- **A/B updates:** Raspberry Pi's own `autoboot.txt` with `tryboot` boots the new slot once and falls back (doc);
+  updates are then whole system images, not `git pull`, so every writable file of the game (settings, audits,
+  credentials, logs, the PuP Pack) must live on the data partition.
+- **Signing keys stay off CI:** sign `boot.img` and the update bundles on the owner's PC with a hardware token; CI may
+  build the unsigned image. A lost secure boot key means provisioned boards never take a new image.
+- **A PuP Pack on a locked board:** the player downloads the author's zip and hands it over (USB stick, or an upload
+  page on the local network); the game accepts only the zip SHA-256s of the releases its trigger map was checked on
+  (inferred design).
+
 ## 6. Status and open work per game
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-12 (the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-19 (5b, signed Raspberry Pi image design facts; 2026-10-12: the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
