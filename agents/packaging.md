@@ -252,6 +252,12 @@ page). Doc = Raspberry Pi's documentation read that day; inferred = reasoning, n
 - **A/B updates:** Raspberry Pi's own `autoboot.txt` with `tryboot` boots the new slot once and falls back (doc);
   updates are then whole system images, not `git pull`, so every writable file of the game (settings, audits,
   credentials, logs, the PuP Pack) must live on the data partition.
+- **A public image for anyone to flash (balenaEtcher) cannot be kept unmodified:** before first boot it is files
+  on a card, and a stock Pi boots whatever is there, so any check on the card can be edited out. Reachable: a
+  dm-verity system whose root hash the initramfs checks, the game starting Scorbit only from a verified release,
+  and the adjustments that change scoring held at factory values while Scorbit is on, so scores stay comparable
+  (inferred design, Tron 2026-10-19). A shared key in such an image is one leak from revocation for every cabinet:
+  ask Scorbit for per-release or per-cabinet credentials.
 - **Signing keys stay off CI:** sign `boot.img` and the update bundles on the owner's PC with a hardware token; CI may
   build the unsigned image. A lost secure boot key means provisioned boards never take a new image.
 - **A PuP Pack on a locked board:** the player downloads the author's zip and hands it over (USB stick, or an upload
