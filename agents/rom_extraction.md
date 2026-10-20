@@ -262,7 +262,10 @@ World Poker Tour to The Walking Dead):
 - The sound script engine has **four generations** (14, 15, 17, 18 opcodes: 2006-08 titles; 2008-11;
   2010 on, Tron v17; the 128 MB titles, Avengers on, v18). They differ only in which opcodes exist; pick the
   argument-length table that parses every script in the file. A parser written for Tron (v17) can
-  misread a v14, v15 or v18 game.
+  misread a v14, v15 or v18 game. Confirmed on a third, newer title 2026-10-20: Spider-Man Vault
+  Edition V1.01 (`smanve_101.bin`, 2016, 128 MB) parses as **v18** — sound table 8,185 entries,
+  1,635 samples (≈ 81 min, all 24 kHz kind-1 IMA), picture table 5,795 records, 28 fonts, 2,652 plain
+  stills, 5,795 animation frames, no checksums-triplet enforced.
 - Sample header `kind` 1 / 2 / 3 = **24 / 12 / 8 kHz** IMA ADPCM; kind 0 would be 16-bit PCM (unused).
   Section 6 only met 24 and 12 kHz on Tron; expect 8 kHz speech on other titles.
 - Samples tile the sound area end to end and never cross an 8 MB bank.
