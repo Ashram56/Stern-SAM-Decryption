@@ -54,7 +54,7 @@ something that would change how another SAM ROM is taken apart (a new method, a 
 mistake and its fix, a correction to this file), fold it in here in the same session (a PR on
 Ashram56/Stern-SAM-Decryption), in the generic section it belongs to, with that game's value as the worked
 example. Facts of one game only (its addresses, status, raw notes) stay in that game's asset repo. Last
-updated 2026-10-10 (second game: Transformers Pro 1.80, `tf_180`, asset repo
+updated 2026-10-20 (section 3.4: Pinball Asset Decryptor as a first look and cross-check; before that, 2026-10-10, second game: Transformers Pro 1.80, `tf_180`, asset repo
 [Transformers-MPF `rom/`](https://github.com/Ashram56/Transformers-MPF/tree/claude/rom-extraction-uayj13/rom):
 the OS shared with Tron, the table registry, text helpers and printf arguments, score and sound hooking
 pitfalls, carried-over names, capture regressions; moved here from Tron-Legacy-LE-ROM-Decryption `AGENTS.md`
@@ -241,6 +241,38 @@ fake 16 ms clock and continue) produced exact colour/fade/timing sequences far f
 emulation. Good for any effect that only calls a few OS functions; use full PinMAME when the effect
 reads game state.
 
+### 3.4 Pinball Asset Decryptor: first look and independent cross-check
+[davidvanderburgh/pinball-asset-decryptor](https://github.com/davidvanderburgh/pinball-asset-decryptor)
+(MIT, desktop app for Windows, macOS and Linux, releases page; or run from source) reads a SAM code update
+`.bin`, its `.zip`, or a PinMAME set zip, with no emulator, and writes ordinary files (external, checked
+2026-10-20 at `ff03fb2`; its SAM notes are `docs/plans/sam_compatibility.md` and the Stern SAM section of
+`docs/guide/manufacturers.md`):
+
+| It gives | Use in this agent |
+|---|---|
+| The set, game and version, recognised by checksum on Select card (every SAM version PinMAME has, Transformers included) | Section 1: a second identification next to the SHA1 match |
+| Every sound decoded to `audio/idxNNNN.wav` (sound table → script → sample), bit exact with the game's own decoder; Tron LE 1.74: 1,103 sounds, 46.5 min, in 8 s | Section 6: compare count, rate and length per sample with our export before trusting it |
+| Every still picture and every font glyph as PNG (`images/pictures/imgNNNN.png`, `images/fonts/fontNN (H px)/`), NNNN = the ROM's picture number; Tron: 2,392 pictures, 1,639 glyphs in 44 fonts | Section 7: check `imgdec.py` and the font table export; glyphs are named by number, not by character |
+| Every animation frame as PNG (`animations/imgNNNN.png`, 16 shades, transparent kept); Tron: 4,150 frames | Section 7: check the frame decode (RLE, delta) against ours |
+| A PinMAME attract-mode capture to MP4 (needs libpinmame and ffmpeg) | Reference video only; it does not replace forced-effect captures (no game state, mostly silent) |
+| Writing replaced sounds, pictures and frames back into the `.bin`, checksums fixed | Section 16: a worked example of a patched image that the USB update accepts |
+
+**Facts from its notes that hold for every SAM title** (external, tested by its author on 24 titles from
+World Poker Tour to The Walking Dead):
+- The sound script engine has **four generations** (14, 15, 17, 18 opcodes: 2006-08 titles; 2008-11;
+  2010 on, Tron v17; the 128 MB titles, Avengers on, v18). They differ only in which opcodes exist; pick the
+  argument-length table that parses every script in the file. A parser written for Tron (v17) can
+  misread a v14, v15 or v18 game.
+- Sample header `kind` 1 / 2 / 3 = **24 / 12 / 8 kHz** IMA ADPCM; kind 0 would be 16-bit PCM (unused).
+  Section 6 only met 24 and 12 kHz on Tron; expect 8 kHz speech on other titles.
+- Samples tile the sound area end to end and never cross an 8 MB bank.
+- 2006-08 titles and Batman: The Dark Knight have pictures but no animation frames.
+
+**What it does not give**: sound *calls* and their sample pools, display effects (deffs), lamp effects,
+text layout, rules, IO tables, coil data. It is an asset extractor; sections 4 to 9 are still this agent's
+work. Use it in the first hour of a new ROM to see what is there, and later as the reference our own
+decoders must match. Its output is ROM-derived: never commit it to a public repository.
+
 ---
 
 ## 4. Getting a game to actually start in the emulator
@@ -413,7 +445,8 @@ leff and tube tables), and is the quickest way to start a table reader for a new
 - Each ADPCM stream starts with an **8-byte header**: `u32 sample_count, u16 1, u8 rate_divisor,
   u8 same`. Rate = 24000 / divisor: **2 = 12 kHz, 1 = 24 kHz**. Data (IMA ADPCM, 4-bit, low nibble
   first, standard step table) follows the header. Decode exactly `sample_count` samples.
-- Decoder: `mpf_package/tools/adpcm.py`.
+- Decoder: `mpf_package/tools/adpcm.py`. Cross-check its WAVs against Pinball Asset Decryptor's
+  (section 3.4), which also handles the other three script engine generations and 8 kHz samples.
 
 **Mistakes made and fixed:**
 - *Rate assumed per class.* The first export played everything at 24 kHz, so speech came out double
@@ -817,7 +850,8 @@ start, hardware) in its own `AGENTS.md`; write one for every new ROM. Tron LE 1.
 
 (Section 14 is the checklist of what the result must contain.)
 
-1. Identify the set; map memory; entropy scan.
+1. Identify the set; map memory; entropy scan. Run Pinball Asset Decryptor on the image for a first look
+   at its sounds, pictures and frames (section 3.4).
 2. Build libpinmame with the hook; get a game started (section 4). Find `task_sleep`.
 3. Find the strings tables (switch, coil, lamp, adjustment, audit, message names) and the switch
    descriptor table. Dump them to CSV/JSON.
@@ -943,7 +977,11 @@ binary patch:
 2. Change the ARM instructions or data in the image. Constants often sit in literal pools or data
    tables shared with other code: check every reader before changing a shared value.
 3. Find whether the ROM verifies its own image (a checksum at boot or in diagnostics) and update it.
-   This was not explored on Tron.
+   Not explored on Tron; external (Pinball Asset Decryptor notes, section 3.4): a section table at file
+   offset `0x120000` holds `(start, end, ~bytesum)` triplets, which shipped files do not always match
+   (Tron: 3 of 5), so the game does not enforce them; from 2010 on the last 4 bytes are `~bytesum` of the
+   rest of the file, checked by the USB update ("VERIFYING IMAGE..."). Recompute both after a patch; that
+   tool writes such patched images and fixes both sums.
 4. Prove the change in PinMAME with a reference trace before and after (section 9) before anyone flashes
    a machine.
 
