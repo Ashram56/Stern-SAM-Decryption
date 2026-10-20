@@ -103,6 +103,28 @@ python tools/vpx/vpx_map.py out --names <Transformers-MPF>/rom/mpf_package/confi
 - 61 lamps (1-62 without 56; 1 and 2 below the playfield, moved to the strip), 12 flashers (17-21, 23, 25-28, 31, 32; six Flupper domes).
 - Before the collection filter, `vpmMapLights` turned 90 GI and flasher lights (TimerInterval 100) into a lamp 100.
 
+Verified 2026-10-19 on `Spider-Man Classic (Stern 2007) VPW Mod 2.1.vpx` (VPW VLM lightmap mod, ROM
+`smanve_101`), outputs in Ashram56/Spider-Man-Vault `game/monitor/` and `docs/vpx/`:
+
+```
+python tools/vpx/vpx_extract.py "Spider-Man Classic (Stern 2007) VPW Mod 2.1.vpx" out --image VLM.Nestmap0
+python tools/vpx/vpx_map.py out --names <io-derived switches/lights/coils yaml> --cabinet --device-size 0.035
+```
+
+- Bounds 0, 0, 952, 2115; playfield `VLM.Nestmap0` 4352x8192 (Mesh/window 4352x8192), **not** GameData
+  IMAG: this is a baked VLM (visual lightmap) table where GameData `IMAG` and the "playfield"-named image
+  (`Playfield_Insert_Text_Benji_Updated`) are **black placeholders** (mean brightness ~3). The real art is
+  the baked lightmap stream `VLM.Nestmap0`; it was picked with `--image` and auto-contrasted/brightened for
+  the Monitor. When the picked playfield is near-black, check `--image` against the mesh textures.
+- 113 image streams (1 legacy BITS, not decoded); 812 items; 18 collections; `script.vbs` 4,380 lines;
+  `switches_all.csv` 320 rows, `lights_all.csv` 196.
+- 56 playfield-mapped switches plus the cabinet strip; 74 lamps; 4 flasher domes: coils 21/27/29/30 ->
+  `Flasherlight 4/3/1/2` (dome-as-light subs) and 5 flasher-as-lamp coils 23/25/26/28/31 -> lamps
+  123/125/126/128/131 (`SetModLamp`/`Lampz.state`).
+- vpm is loaded externally (`LoadVPM "03060000", "sam.VBS"`), the switch wiring is the `<obj>_Hit` subs with
+  `Controller.Switch(n)`; motors and optos (52/53/56/57/58/62) are runtime sims with no playfield object.
+
+
 ## 4. The `.vpx` format (what `vpx_extract.py` relies on)
 
 - An **OLE compound file**. Streams: `GameStg/GameData` (table record and script), `GameStg/GameItemN` (one per
@@ -151,6 +173,8 @@ that the patterns it uses are the ones `vpx_map.py` reads (comments are stripped
 | Flashers | `ModLampz.MassAssign(n) = obj` | **solenoid** numbers |
 | Flashers | `SolModCallback(n)` / `SolCallback(n)` = `"vpmFlasher obj,"` (or `Array(...)`) | solenoid n → obj |
 | Flupper domes | `SolModCallback(n) = "<sub>"`, the sub calls `ModFlashFlasher k` / `FlashFlasher k` | solenoid n → `Flasherlight<k>` (else `Flasherflash<k>`, `Flasherbase<k>`) |
+| Dome as a light | `SolModCallback(n) = "<sub>"`, the sub sets a Light object's state directly (`Flasherlight<k>.state = pwm`) | solenoid n -> that light (Spider-Man: coils 21/27/29/30 -> Flasherlight 4/3/1/2) |
+| Flasher-as-lamp | `SolModCallback(n) = "SetModLamp n,"` -> `Lampz.state(n)` | a lamp number, no separate coil (nFozzy: Spider-Man coils 23/25/26/28/31 -> lamps 123/125/126/128/131) |
 
 Not handled yet (add them when a table uses them): `SolCallback(n)` objects for coils,
 `Controller.Switch(n)` set from a sub named after another object or from a timer (Transformers' Optimus ramp
@@ -221,4 +245,10 @@ made, what went on the cabinet strip, and the overlay verdict. List what needs t
 
 - 2026-10-11: `--device-size` (bigger markers, none overlapping) after the Transformers owner asked for bigger icons.
 
-Last updated 2026-10-18 (light colours in `lights_all.csv`).
+- 2026-10-19: third table, Spider-Man Classic VPW 2.1 (a VLM baked-lightmap mod). Added the flasher-as-light
+  dome pattern (sub sets `Flasherlight<k>.state`) and the nFozzy flasher-as-lamp rows to the map table;
+  `vpx_map.py` now finds both (test added). Documented the near-black playfield case (baked VLM: pass
+  `--image` of the lightmap stream) and the external-`sam.VBS`/`<obj>_Hit` wiring used by VLM mods.
+
+Last updated 2026-10-19 (third table, Spider-Man Classic VPW 2.1; flasher-as-light domes).
+

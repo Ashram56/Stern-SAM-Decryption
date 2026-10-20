@@ -128,6 +128,10 @@ SolModCallback(26) = "SolModFlasherPWM126"
 Sub SolModFlasherPWM126(level)
     ModFlashFlasher 1,level
 End Sub
+SolModCallBack(29) = "FlashSol29"     ' dome driven through a Light object's .state (Spider-Man VPW)
+Sub FlashSol29(pwm)
+    Flasherlight2.state = pwm
+End Sub
 """
 
 
@@ -135,7 +139,7 @@ def test_map_reads_vpw_trough_targets_and_flupper_domes(tmp_path):
     items = [{"type": t, "name": n, "x": 1.0, "y": 2.0, "nx": 0.5, "ny": 0.5, "timer_interval": ti}
              for n, t, ti in (("BallRelease", "Kicker", 0), ("sw3", "Kicker", 0), ("sw2", "HitTarget", 0),
                               ("sw37", "HitTarget", 0), ("f17", "Light", 100), ("Flasherlight1", "Light", 100),
-                              ("li5", "Light", 5), ("gi1", "Light", 100))]
+                              ("Flasherlight2", "Light", 100), ("li5", "Light", 5), ("gi1", "Light", 100))]
     (tmp_path / "items.json").write_text(json.dumps({"items": items, "collections": {"AllLamps": ["li5"]}}))
     (tmp_path / "script.vbs").write_bytes(SCRIPT_VPW.encode("cp1252"))
     vpx_map.main([str(tmp_path)])
@@ -143,7 +147,8 @@ def test_map_reads_vpw_trough_targets_and_flupper_domes(tmp_path):
     assert sorted(sw) == [2, 3, 18, 19, 20, 21, 37]
     assert sw[18]["vpx"] == "BallRelease" and sw[3]["vpx"] == "sw3" and sw[37]["vpx"] == "sw37"
     li = {(r["kind"], int(r["number"])): r["vpx"] for r in csv.DictReader(open(tmp_path / "lights.csv"))}
-    assert li == {("lamp", 5): "li5", ("flasher", 17): "f17", ("flasher", 26): "Flasherlight1"}
+    assert li == {("lamp", 5): "li5", ("flasher", 17): "f17", ("flasher", 26): "Flasherlight1",
+                  ("flasher", 29): "Flasherlight2"}
 
 
 def test_cabinet_strip_places_unplaced_switches_and_off_picture_lamps(tmp_path):

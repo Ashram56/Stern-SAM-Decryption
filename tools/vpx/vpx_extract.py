@@ -309,8 +309,14 @@ def main(argv=None):
     pf_path = os.path.join(args.outdir, "playfield.png")
     if pf:
         import io
-        from PIL import Image
-        Image.open(io.BytesIO(pf["DATA"])).convert("RGB").save(pf_path)
+        from PIL import Image, ImageStat
+        im = Image.open(io.BytesIO(pf["DATA"])).convert("RGB")
+        im.save(pf_path)
+        mean = ImageStat.Stat(im).mean[0]
+        if mean < 15:
+            print("WARNING: playfield {} ({}) is near-black (mean brightness {:.1f}). "
+                  "Baked VLM tables keep the real art in a mesh texture: re-run with "
+                  "--image <NAME> (no extension, e.g. VLM.Nestmap0).".format(pf["NAME"], why, mean))
 
     placed = [it for it in items if it.get("nx") is not None and it.get("name")]
     sw = [it for it in placed if it["type"] in SWITCH_TYPES or (it["type"] in HIT_EVENT_TYPES and it.get("hit_event"))]

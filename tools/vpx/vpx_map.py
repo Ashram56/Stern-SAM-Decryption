@@ -238,8 +238,14 @@ def main(argv=None):
         if f:
             objs = [o.strip().lower() for o in (f.group(1) or f.group(2)).split(",")]
         else:
-            k = re.search(r"\b(?:Mod)?FlashFlasher\s*\(?\s*(\d+)", subs.get(cb.lower(), ""), re.I)
+            body = subs.get(cb.lower(), "")
+            k = re.search(r"\b(?:Mod)?FlashFlasher\s*\(?\s*(\d+)", body, re.I)
             objs = [p + k.group(1) for p in ("flasherlight", "flasherflash", "flasherbase")] if k else []
+            # a dome driven through a Light object: <sub> sets Flasherlight<k>.state = pwm (Spider-Man VPW)
+            if not objs:
+                k = re.search(r"\bFlasher(?:light|flash)?\s*(\d+)\b[^(\r\n]*\.state\s*=",
+                              body, re.I)
+                objs = [("flasherlight" + k.group(1))] if k else []
         objs = [o for o in objs if o in by_name]
         if objs:
             flashers.setdefault(n, []).extend(objs[:1] if not f else objs)
