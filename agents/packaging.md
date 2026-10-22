@@ -135,6 +135,10 @@ soon as the game repo exists:
   in the environment, inherited by `setup.py`), and hand it to the credential helper for later pulls. Never
   open Git Credential Manager's window. A private repository answers 404 to `curl`/`irm` without a token, so
   the one line cannot fetch itself: document clone-then-run for that case.
+- **Testing the token step on macOS CI**: run it with `GIT_CONFIG_NOSYSTEM=1` as well as a temporary HOME.
+  Homebrew git's system config sets `credential.helper=osxkeychain`, which hangs in `git credential approve` when
+  HOME has no keychain, so the test times out on `macos-latest` only (observed, Transformers `tests/test_install.py`
+  `test_github_auth`, red on every main push from 2026-10-10 until the fix, 2026-10-22).
 - **A private pack repository next to a public game**: when the only private repository is an optional one
   (Transformers: the PuP Pack's submodule, the owner's copy), the token step must not stop the install. With no
   token, `--yes`, an empty answer or a token that cannot read it, say the game installs without that part and
@@ -234,5 +238,5 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-12 (the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-22 (macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
