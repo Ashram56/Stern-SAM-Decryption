@@ -248,7 +248,9 @@ any SAM game or any new board (a Pi 5, an Orange Pi, another Jetson). All observ
    with video there). Tron's `run.py` added `--render-thread safe` whenever `opengl3` was asked (a workaround for
    the captures under Xvfb), so the Pi ran with the separate render thread off while `project.godot` said on and
    Jetson docs said "on by default". Ask the engine (`RenderingServer.is_on_render_thread()`), never the setting
-   (a command-line `--render-thread` overrides `project.godot`'s `thread_model`). The same applies to a launcher's
+   (a command-line `--render-thread` overrides `project.godot`'s `thread_model`). It cannot be turned on there: Godot 4.6.3
+   with `--render-thread separate` and opengl3 crashes at start ("Error initializing GLAD", SIGSEGV; the GL ES context
+   is not created on the render thread), so the main thread stays the limit. The same applies to a launcher's
    window mode: test fullscreen against windowed.
 2. **Fullscreen or not.** A windowed Godot on X is copied by X every frame (a Pi 4: +7 ms TFU and +10 ms render at
    1080p; an empty scene 45 fps windowed, 60 fps with `--fullscreen`, which page flips).
