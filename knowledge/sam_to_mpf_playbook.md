@@ -128,6 +128,14 @@ for merges.
   (Windows Godot listens on IPv6 only).
 - Regenerating media deletes Godot's `.import` files; reimport after. Generated media is git-ignored, so
   after any pull it is stale: stamp the inputs and regenerate automatically on launch.
+- **A colour LED DMD (PIN2DMD) needs no new platform code** [code, MPF 0.80.1]: MPF ships `mpf/platforms/pin2dmd.py`
+  (pyusb, USB `0314:e457`, "virtual pinball" bit-plane packets `81 C3 E9 12`) and an `rgb_dmds` device that takes
+  12288-byte RGB frames (128x32, row by row) over BCP as `rgb_dmd_frame` (name must be `default`). With GMC the game
+  only reads back its own 128x32 picture (`get_viewport().get_texture().get_image()`, same as a P-ROC `dmd_frame`
+  feeder) and sends it; GMC needs no screen for that. Overlay: `hardware: rgb_dmd: pin2dmd`, `pin2dmd: resolution:
+  128x32`. Unit-test with `usb.core.find` mocked and call the device's `_send_frame` (the feeder runs in an executor
+  thread the test loop does not run). Tron: `game/tools/pin2dmd.gd`, `game/config/pin2dmd.yaml` (Tron-Legacy-MPF
+  PR #56); not yet tried on a real PIN2DMD (colour order, firmware).
 
 ### GMC + Godot performance on a slow target [GMC] [Godot]
 A Jetson Xavier NX cabinet (4 cores at 1.9 GHz, CPU and GPU sharing 6.8 GB) runs the DMD, three PuP videos and the
