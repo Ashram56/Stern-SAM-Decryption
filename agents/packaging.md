@@ -244,8 +244,13 @@ any SAM game or any new board (a Pi 5, an Orange Pi, another Jetson). All observ
 
 **A. Check these first, in this order, before profiling the game**
 
-1. **Which renderer and which thread mode really run.** The Pi 4 needs `--rendering-driver opengl3` (Vulkan froze
-   with video there). Tron's `run.py` added `--render-thread safe` whenever `opengl3` was asked (a workaround for
+1. **Which renderer and which thread mode really run.** The Pi 4 needs `--rendering-driver opengl3` (Vulkan is not a freeze but 1 fps:
+   V3DV uploads each copied video plane with a render pass that allocates and zeroes a fresh tile-state buffer, about
+   2 s a frame with 1080p planes; stack `texture_2d_update` > `vkCmdCopyBufferToImage` > `copy_buffer_to_image_shader`
+   > `v3dv_job_allocate_tile_state`. A bare Godot 1080p scene does 74.8 fps in Vulkan against 39 in OpenGL, so only
+   video uploads are the problem. The separate render thread under Vulkan crashed after 5 s: a game script touched
+   the scene tree from that thread. V3DV exposes `VK_EXT_external_memory_dma_buf`, but a zero-copy import needs a
+   GDExtension doing the import and a TFU copy to a tiled image: not built). Tron's `run.py` added `--render-thread safe` whenever `opengl3` was asked (a workaround for
    the captures under Xvfb), so the Pi ran with the separate render thread off while `project.godot` said on and
    Jetson docs said "on by default". Ask the engine (`RenderingServer.is_on_render_thread()`), never the setting
    (a command-line `--render-thread` overrides `project.godot`'s `thread_model`). It cannot be turned on there: Godot 4.6.3
