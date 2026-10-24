@@ -234,9 +234,84 @@ AGX Orin, L4T R36.4.3 / JetPack 6.2):
   (`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`, `--rendering-method mobile`, under `xvfb-run`). Tests
   that import MPF run on the board.
 
+## 5d. Raspberry Pi 4 (and the next SoCs): what to check before promising a frame rate
+
+Tron tested on a Pi 4B, Debian 13 (trixie), Raspberry Pi kernel 6.18, Mesa 25.0.7 (Mesa 26.2.2 from the Pi repository
+gave the same times), Godot 4.6.3 on the Compatibility (OpenGL ES) renderer, GoZen for the PuP Pack's videos, a 1080p
+backglass full screen, the classic 128x32 DMD in its own window (2026-10-24; findings also in issue #44). The Tron
+numbers are in the game repository (`docs/pup/README.md`, "Raspberry Pi 4"); this is the method and what applies to
+any SAM game or any new board (a Pi 5, an Orange Pi, another Jetson). All observed on the machine unless said.
+
+**A. Check these first, in this order, before profiling the game**
+
+1. **Which renderer and which thread mode really run.** The Pi 4 needs `--rendering-driver opengl3` (Vulkan froze
+   with video there). Tron's `run.py` added `--render-thread safe` whenever `opengl3` was asked (a workaround for
+   the captures under Xvfb), so the Pi ran with the separate render thread off while `project.godot` said on and
+   Jetson docs said "on by default". Ask the engine (`RenderingServer.is_on_render_thread()`), never the setting
+   (a command-line `--render-thread` overrides `project.godot`'s `thread_model`). The same applies to a launcher's
+   window mode: test fullscreen against windowed.
+2. **Fullscreen or not.** A windowed Godot on X is copied by X every frame (a Pi 4: +7 ms TFU and +10 ms render at
+   1080p; an empty scene 45 fps windowed, 60 fps with `--fullscreen`, which page flips).
+3. **The cost of a full-window layer, with the default 2D shader.** Measure an empty scene, then a `ColorRect`,
+   then N layers. On the Pi 4 (V3D, 8 QPU at 500 MHz, about 16 G instructions a second) Godot's default canvas
+   shader is 118 instructions a pixel, so about 136 Mpixel/s: 10-14 ms for one 1080p layer, +10 ms for each more.
+   `render_mode unshaded` and a branch-free YUV shader (32 instructions) cut that 4 times. Blending is free
+   (opaque and transparent `ColorRect` cost the same); textures and bandwidth were not the limit. Use
+   `V3D_DEBUG=shaderdb` (instructions, threads, spills) and `/sys/devices/platform/v3dbus/fec00000.v3d/gpu_stats`.
+   A full-window `ColorRect` for a black background costs 3 to 6 fps: use `RenderingServer.set_default_clear_color`.
+4. **Videos: layers hidden under an opaque video should neither be drawn nor decoded** (a silent one pauses until
+   uncovered). The Pi 4's hardware decoder slows the GPU by 15 to 30 %, software decoding in parallel does not.
+5. **A heavy background in a SubViewport** (Tron's DMD light cycles: 3D with glow, about 13 passes a frame) cost
+   27 ms a frame on the Pi 4 and half of the frame rate; turning it off (or the classic 128x32 DMD) is the largest
+   single gain. Count the render passes a frame before blaming the video.
+6. **GPU frequency was not the limit once the shaders were light**: an overclock to 600 MHz (no extra voltage)
+   gave nothing, because the main thread became the limit. Overclocking is the last step, and needs the owner.
+
+**B. The V4L2 stateful decoder (`bcm2835-codec`, `/dev/video10`, FFmpeg `h264_v4l2m2m`)**
+
+- `avcodec_flush_buffers()` leaves it answering EOF to every later request (a looping video stops): restart in
+  place (`VIDIOC_STREAMOFF`/`STREAMON` on both queues, as the stateful decoder interface defines a seek) or recreate
+  the decoder. `pkt_timebase` and `time_base` must be set. Capture buffers are YU12 or NV12, 1920x1088 for 1080p.
+- The capture buffers are **uncached** mappings: reading a 1080p frame costs 10-15 ms (1.3 ms from normal memory),
+  and NEON does not help (25 %). So copying frames to Godot's textures is the bottleneck, not decoding.
+- **Zero-copy** (validated: 54 fps and 1.1 ms CPU a frame in a C prototype; Godot's CPU 160 % -> 93 %, video lag
+  4.4 s -> 0.9 s in the game): `VIDIOC_EXPBUF` (dmabuf per capture buffer, once) -> `EGL_EXT_image_dma_buf_import`
+  per plane (R8 for Y, U and V with their offsets and pitches; GR88 for NV12's UV) -> `glEGLImageTargetTexture2DOES`
+  -> `RenderingServer.texture_create_from_native_handle` -> the existing YUV shader. FFmpeg 7.1 has no drm_prime
+  output for `v4l2m2m`: find the buffer from `frame->buf[0]` (opaque is FFmpeg's internal `V4L2Buffer`), so FFmpeg's
+  source tree must stay configured next to GoZen. The GL calls must run on the render thread. Keep the software
+  fallback, hold decoded frames until a few frames after they were shown, and skip late frames instead of slipping
+  the clock.
+- **Mesa v3d cannot sample a linear dmabuf texture**: it copies the plane to a tiled shadow on the TFU at every
+  draw (`V3D_DEBUG=perf`: "Updating WxH@0 shadow for linear texture", `v3d_update_shadow_texture`): about 1.6 ms a
+  1080p plane, 12 ms a frame for two 1080p videos. Converting once per decoded frame does not help while the game
+  shows fewer frames than the video has. Re-encoding the videos to 720p cuts it 4 to 6 times but the owner may
+  refuse to touch the pack; `Window.content_scale_size` (a lower render size, videos untouched) is the other lever
+  (1280x720: +38 % fps).
+- Pi sound and screens, found on the way: the 3.5 mm jack card is missing on trixie (`snd_bcm2835.enable_headphones=0`
+  in the DTB bootargs: append `snd_bcm2835.enable_headphones=1` to `cmdline.txt`); a screen that sends no EDID and is
+  forced with `video=HDMI-A-n:1920x1080@60D` gets no HDMI audio (vc4 treats it as DVI): give it an EDID with a CEA
+  block (audio, LPCM, HDMI VSDB) through `drm.edid_firmware=HDMI-A-n:edid/<file>.bin`; without PipeWire ALSA
+  `default` is card 0 (often an HDMI port with nothing), Godot then uses its Dummy driver: write `/etc/asound.conf`
+  (`plug` to `hw:Headphones`; dmix on the jack stalls); X can keep an unplugged HDMI output as the primary at 0,0
+  (turn it off in `~/.xinitrc` with `xrandr`).
+- **Remote Control on the board:** a `claude remote-control` session started by a service from the home directory
+  asks for folder trust at every start: start it from a dedicated folder (`~/claude-rc`) and answer once. Builds do
+  not belong on the board (FFmpeg and godot-cpp took about 45 minutes with the game stopped): cross-build in
+  Docker or on a build machine and hand the library over through a throwaway git branch the board clones.
+
+**Open:** `tools/pup/runtime/` (the runtime other games copy) does not have these changes yet: the fast YUV shader,
+covered layers neither drawn nor decoded, no full-window `ColorRect`, `render_size`, and the zero-copy patch of GoZen
+(Tron: `scripts/gozen/gozen_zerocopy.patch`, `pup_addons/gde_gozen/video_playback.gd`, `game/pup/`).
+
+**C. Measuring (any new board)**: compare at the same frame rate and report the video lag (median and the 95th
+percentile) and the frames over 50 ms, not CPU percent alone (a lower CPU at a lower frame rate proves nothing);
+three runs per variant, because random video picks move the frame rate by 15 %; stop the game and any build while
+measuring; the GPU's queue time (`gpu_stats`), ALSA underruns and `vcgencmd get_throttled` go in every row.
+
 ## 6. Status and open work per game
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-22 (macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-24 (Raspberry Pi 4: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
