@@ -255,10 +255,20 @@ any SAM game or any new board (a Pi 5, an Orange Pi, another Jetson). All observ
    Jetson docs said "on by default". Ask the engine (`RenderingServer.is_on_render_thread()`), never the setting
    (a command-line `--render-thread` overrides `project.godot`'s `thread_model`). It cannot be turned on there: Godot 4.6.3
    with `--render-thread separate` and opengl3 crashes at start ("Error initializing GLAD", SIGSEGV; the GL ES context
-   is not created on the render thread), so the main thread stays the limit. The same applies to a launcher's
-   window mode: test fullscreen against windowed.
-2. **Fullscreen or not.** A windowed Godot on X is copied by X every frame (a Pi 4: +7 ms TFU and +10 ms render at
-   1080p; an empty scene 45 fps windowed, 60 fps with `--fullscreen`, which page flips).
+   is not created on the render thread) (code: `EGLManager::release_current()` in `drivers/egl/egl_manager.cpp`
+   leaves `current_window` set, so the render thread's `window_make_current()` returns early with no context; one
+   line, `current_window = nullptr;`, fixes it, in Godot's master but not in 4.6.3: a Godot built with it runs
+   `separate` cleanly, observed). On the Pi 4 it moved the main thread from 90 % to 60 % (+45 % on the render thread,
+   +6-12 points in all) without more frames, but with a frame cap it gave the steadiest frames (see C). Any GDExtension
+   that makes GL calls must then run them through `RenderingServer.call_on_render_thread()`. The same applies to a
+   launcher's window mode: test fullscreen against windowed.
+2. **Fullscreen or not, and one window only.** A windowed Godot on X is copied by X every frame (a Pi 4: +7 ms TFU and
+   +10 ms render at 1080p; an empty scene 45 fps windowed, 60 fps with `--fullscreen`, which page flips). A second
+   window on the same X screen (an LCD DMD beside a full screen backglass) loses the page flip as well: Pi 4 at a
+   30 fps cap, 29.6 -> 21 fps, the TFU from 13 % to 42 % (observed). Draw the second display inside the full screen
+   window instead (a `Control` over or beside the backglass's screens: same cost as no DMD, observed; Tron:
+   `[dmd] window="backglass"` in `game/pup.cfg`). A 3D background behind such a DMD (Tron's light cycles) cost
+   ~40 ms of GPU a frame there: keep it off small GPUs.
 3. **The cost of a full-window layer, with the default 2D shader.** Measure an empty scene, then a `ColorRect`,
    then N layers. On the Pi 4 (V3D, 8 QPU at 500 MHz, about 16 G instructions a second) Godot's default canvas
    shader is 118 instructions a pixel, so about 136 Mpixel/s: 10-14 ms for one 1080p layer, +10 ms for each more.
@@ -338,10 +348,31 @@ measuring; the GPU's queue time (`gpu_stats`), ALSA underruns and `vcgencmd get_
 software decoding can show a high frame rate while it delivers the videos several seconds late with the CPU
 saturated, whereas V4L2 hardware decoding with dmabuf zero-copy keeps the lag near zero at about half the CPU
 (observed, Pi 4B). Frame rate and CPU alone pick the wrong configuration.
+Report the frame time spread too (p90, frames over 40 ms): with vsync at 60 Hz a GPU near full makes every frame a
+little over 16.7 ms wait for the next vblank and cost 33 ms, so "45 fps" is an uneven mix of 60 and 30 (Pi 4: median
+16.7 ms, p90 35 ms). When the videos are 30 fps (check with `ffprobe`), `--max-fps 30` loses no video frame and costs
+less (Pi 4: 190 % -> 165 % CPU, GPU 72 % -> 58 %); with a separate render thread it was the steadiest (p90 33.3 ms,
+3 % of frames over 40 ms against 7 %). Look for a 30 Hz mode first (`xrandr`): an EDID that only offers 60 Hz rules
+out true 30 Hz vsync. Change one variable per run and repeat the control at the end: two controls 20 minutes apart
+differed by 1-2 fps. NV12 instead of YUV420P from the V4L2 decoder (two planes instead of three in zero-copy) changed
+nothing measurable on the Pi 4 (GPU -3 points).
+
+**D. Building for the board off the board.** Cross-compile on an x86_64 machine with Ubuntu's `aarch64-linux-gnu`
+toolchain (glibc 2.39 on 24.04; check `objdump -T | grep GLIBC_` against the board's). Godot: put `gcc`, `g++`, `ar`,
+`ranlib`, `strip` symlinks to the `aarch64-linux-gnu-` tools first on `PATH` and run
+`scons platform=linuxbsd arch=arm64 target=editor production=yes lto=none use_static_cpp=yes` (`PKG_CONFIG_LIBDIR`
+pointed nowhere so no host library leaks in; the X11/Wayland headers are Godot's own): 38 min on 4 cores, 148 MB,
+57 MB with `xz -9`. Without LTO it measured the same as the official build on the Pi 4 (observed). GoZen and FFmpeg
+cross-build the same way (FFmpeg `--enable-cross-compile --arch=aarch64 --cross-prefix=aarch64-linux-gnu-`); for a
+binary that must also run on JetPack 5, build in an `ubuntu:20.04` container (glibc 2.29-2.31). A GDScript change can
+be checked without the board: `qemu-aarch64-static -L /usr/aarch64-linux-gnu <arm64 godot> --headless --path game
+--check-only --script res://<file>.gd` (autoload names are unknown there: compare with the unchanged file). Hand the
+binaries to the board on a throwaway orphan git branch with their `.sha256` (it needs no credentials to clone a
+public repository), and measure them beside the installed ones, never in their place.
 
 ## 6. Status and open work per game
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-25 (Raspberry Pi 4, 5d: the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-25 (Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
