@@ -3,6 +3,9 @@
 > **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
 > Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
 > access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+> **Route it:** ROM extraction and re-coding learnings stay here; anything about Godot, GDE GoZen, GMC, MPF, a
+> platform or a board (decoders, kernel, sound, screens, frame rates, installers' toolchain) goes to
+> [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) instead (its CONTRIBUTING.md), with at most a pointer here.
 
 Rebuild a Stern SAM game in MPF + Godot (GMC) **exactly as the ROM plays it**: rules, scoring, display,
 sound, lamps, service menu and every operator setting. Nothing here improves on the original; that is the
@@ -60,6 +63,11 @@ overlay, a model) and tells the packaging agent, which carries it to every insta
 - **Service menu during a game**: the ROM suspends the game task (`task_suspend(0, 0x800)`) and resumes it on
   exit. MPF's timers cannot be suspended, so the game asks "END GAME?" and a second SELECT ends it into the
   menu (logged as a departure). [MPF]
+  Every effect that hangs off the normal game over (music, PuP/OST, lamps, audits, high scores) is skipped on
+  that route: for each game end that is not the ROM's own (service menu, slam, reset), list those effects and
+  redo them explicitly. Tron: the PuP OST of the cancelled game kept looping into attract, which sounded
+  quieter; `tron_service_entered` now stops it (observed, 2026-10-27; the Godot side is
+  MPF-Godot-Packaging `fixes/godot/audio-only-screen-keeps-playing.md`). [MPF]
 - **Pro and LE**: one config in one model's ROM numbers, the other model as an overlay; rules look devices up
   by name (`tron/hw_numbers.py`). Pro decompile: outputs the Pro lacks are reused as flashers (Tron Pro ramp
   flashers 19/25, lower flashers 22/23 fired with them). docs/hardware.md "Pro or LE". [SAM]
