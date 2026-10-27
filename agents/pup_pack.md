@@ -163,6 +163,12 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
   draw the round panel behind the DMD instead. A 256x64 dot DMD cost nothing (29.7 FPS at a 30 cap); the HD DMD
   without glow at 512x128 cost ~45 points of CPU and a 50 s preload; at native 1080p (3x) the GPU fell to 18 FPS.
   (observed, Tron, 2026-10-26)
+- **Keep a 30 fps video in sync when the game draws less than 30 fps**: a video player that decodes one frame
+  per drawn frame falls behind (Pi 4, game at 27.4 FPS: the picture ran ~85 ms per second late, 5 s after a
+  minute of attract, while the audio clock stayed exact). Decode in a loop until the queue is full (Tron:
+  `_decode_frames` in `video_playback.gd`, queue of 3), and the gap stayed within +-0.2 s over 2 min.
+  A hung or killed GoZen zero-copy process can leave the Pi 4's VideoCore wedged (v3d hang resets, codec
+  component creation timeouts) until a reboot. (observed, Tron, 2026-10-27)
 - **The GoZen Windows build** is a MinGW-w64 cross build in Docker (Tron: `scripts/build_gozen.sh windows`,
   `scripts/gozen/build_windows_in_docker.sh`, the hwaccel code in `scripts/gozen/gozen.patch` under `_WIN32`):
   FFmpeg 7.1 trimmed to the pack's codecs, `--enable-d3d11va --enable-dxva2` with the h264/hevc/vp9 hwaccels,
