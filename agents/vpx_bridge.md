@@ -3,6 +3,9 @@
 > **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
 > Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
 > access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+> **Route it:** ROM extraction and re-coding learnings stay here; anything about Godot, GDE GoZen, GMC, MPF, a
+> platform or a board (decoders, kernel, sound, screens, frame rates, installers' toolchain) goes to
+> [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) instead (its CONTRIBUTING.md), with at most a pointer here.
 
 Make a Visual Pinball X table play with the MPF game instead of PinMAME and the ROM: VPX keeps the ball, the
 physics and the mechanical sounds; MPF runs the rules; Godot draws the DMD and plays the ROM's speech and
