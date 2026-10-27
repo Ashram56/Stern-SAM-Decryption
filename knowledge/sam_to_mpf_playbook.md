@@ -100,11 +100,11 @@ for merges.
 
 ### MPF 0.80 [MPF]
 - Generated YAML needs `#config_version=6` as the first line; the asset package's files lack it.
-- Without a terminal start `mpf game . -t` (no curses UI). Never pass `-b`: it disables BCP, MPF Monitor's server with it.
+- Without a terminal start `mpf game . -t` (no curses UI). Don't pass `-b`: it stops MPF's connection to GMC (no display or sound). In MPF 0.80.1 the BCP servers, MPF Monitor's on 5051 among them, start whatever `-b` says (code, `mpf/core/bcp/bcp.py`; corrected 2026-10-12, it was written that `-b` stops the monitor's server too).
 - MPF always serves BCP on 127.0.0.1:5051 (MPF Monitor's port) and **waits for GMC on 5050**: start Godot first.
 - `bcp_trigger()` only reaches clients that registered the event name; GMC registers none for sounds,
   so every sound was dropped. Use `bcp_trigger_client()` addressed to `local_display`.
-- Duplicate YAML keys are silently merged (PyYAML keeps the last): an early package lost 8 switches and 8 lamps that way. Check generated YAML for duplicates.
+- Duplicate YAML keys: MPF's own loader (ruamel, `typ='safe'`) refuses them with `DuplicateKeyError`, but a generator writing YAML through PyYAML merges them silently (it keeps the last): an early asset package lost 8 switches and 8 lamps in that step, before MPF saw the file. Check generated YAML for duplicates (observed on ruamel.yaml 0.18.6, 2026-10-12).
 - An autofire device marks the playfield active itself; remove `playfield_active` from those switches.
 - `driverboards: sternSAM` goes under `hardware:`; under `p_roc:` MPF lowercases it and pypinproc rejects it.
 - Platform classes use `__slots__`: patch at class level, not per instance.
@@ -114,6 +114,7 @@ for merges.
   soon as the bonus ends. Restart the background deff at `ball_will_start`.
 
 ### GMC 1.0 + Godot 4.5 [GMC] [Godot]
+New GMC / Godot gotchas go to [MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) (`fixes/`), not here; the ones below stay because the recreation agent hits them first.
 - GMC parses each socket read as whole lines; MPF's big `settings` message splits across reads and kills
   GMC's BCP thread (no sound after that). `scripts/gmc_patch.py` keeps the unfinished tail; apply it
   idempotently after every GMC install.
@@ -121,63 +122,47 @@ for merges.
 - When the last slide ends GMC falls back to its base slide. The ROM never clears the DMD: keep the last
   frame until the next effect.
 - `--headless` draws nothing: render under Xvfb with `--rendering-driver opengl3`.
+- A project never opened in the editor (no `.godot/` class cache, e.g. fresh from git) fails at start: `Could not find type "MPFDisplay"`, the MPF autoload does not load, GMC never listens. Import it first, twice: `godot --headless --path GAME --import` (observed, Godot 4.6.3 + GMC 1.0.0).
 - `--write-movie` runs faster than real time, MPF never connects: capture with a real-time autoload
   (`game/tools/dmd_capture.gd`, inert without `--capture-dir=`).
 - Probing port 5050 with a connection makes GMC quit: probe by trying to bind, and probe IPv6 too
   (Windows Godot listens on IPv6 only).
 - Regenerating media deletes Godot's `.import` files; reimport after. Generated media is git-ignored, so
   after any pull it is stale: stamp the inputs and regenerate automatically on launch.
+- **A colour LED DMD (PIN2DMD) needs no new platform code** [code, MPF 0.80.1]: MPF ships `mpf/platforms/pin2dmd.py`
+  (pyusb, USB `0314:e457`, "virtual pinball" bit-plane packets `81 C3 E9 12`) and an `rgb_dmds` device that takes
+  12288-byte RGB frames (128x32, row by row) over BCP as `rgb_dmd_frame` (name must be `default`). With GMC the game
+  only reads back its own 128x32 picture (`get_viewport().get_texture().get_image()`, same as a P-ROC `dmd_frame`
+  feeder) and sends it; GMC needs no screen for that. Overlay: `hardware: rgb_dmd: pin2dmd`, `pin2dmd: resolution:
+  128x32`. Unit-test with `usb.core.find` mocked and call the device's `_send_frame` (the feeder runs in an executor
+  thread the test loop does not run). Tron: `game/tools/pin2dmd.gd`, `game/config/pin2dmd.yaml` (Tron-Legacy-MPF
+  PR #56); not yet tried on a real PIN2DMD (colour order, firmware).
+- **A ZeDMD: MPF's own platform is fragile, write the serial client** [code, MPF 0.80.1; protocol from libzedmd, not
+  captured]: `mpf/platforms/zedmd.py` needs libzedmd's compiled pybind11 extension, built for one Python each (it did
+  not import on Python 3.13: `undefined symbol _PyThreadState_UncheckedGet`), and picks the library with
+  `platform.machine in (...)` (the function, never called), so a Raspberry Pi loads the x64 one. A platform of your own
+  (`mpf: platforms: name: module.Class`, pyserial only) works everywhere: handshake `FRAME` `ZeDMD` 0x0c, 64-byte reply
+  (`ZeDM`, width/height u16 LE at 4/6, write size at 11, byte 57 'R'), the changed 8x4 zones as RGB888
+  (`FRAME` `ZeDMD` 0x04 size-hi size-lo 0, per zone its index then 96 bytes, black zone = index + 128), `ZeDMD` 0x06
+  render, 0x0a clear, every write-size block answered `ZeDMD` `A`; 921600 baud (115200 on the ESP32-S3's own USB).
+  For less CPU, a small C feeder reading raw RGB frames on stdin (Godot starts it with `OS.execute_with_pipe`) skips
+  BCP, MPF and Python; cross-compile it with `python -m ziglang cc -target aarch64-linux-gnu` (pip `ziglang`).
+  Tests: a fake device (pty for the C one). Tron: `game/tron/zedmd_native.py`, `game/native/zedmd_feed/`
+  (Tron-Legacy-MPF PR #56), also in MPF-Godot-Packaging PR #5; not yet tried on a real ZeDMD.
+- **Run the real setup in a clean venv before telling a player to try a branch** [observed]: an optional dependency
+  installed on your own machine (here `lz4`, imported by a new script) hides a missing requirement, and the player's
+  setup then stops with `ModuleNotFoundError`. Also, MPF's event handlers must declare `**kwargs` by that name (a lambda
+  with `**kw` is refused at `add_handler`).
 
 ### GMC + Godot performance on a slow target [GMC] [Godot]
-A Jetson Xavier NX cabinet (4 cores at 1.9 GHz, CPU and GPU sharing 6.8 GB) runs the DMD, three PuP videos and the
-light cycles in one Godot process: every window freezes together when Godot's main thread stalls. Measured on
-Tron (full game, 2026-10-12); method and figures in [agents/improvement.md](../agents/improvement.md) section 2a.
-
-| Practice | Why (Tron's measurement) |
-|---|---|
-| Measure before guessing: frame times from a probe, MPF's log, and per-slide timing (`node_added` / `ready` / next frame / `frame_post_draw`) against a baseline frame | 67 of 68 hitches were slide shows; the guessed causes (light cycles, videos, power mode) were not |
-| Never block the main thread on a worker (`wait_for_task_completion`, a `load()` of something still loading); hand the object to the worker or poll `is_task_completed()` | A video switch waiting for a loop restart froze every screen 0.3-0.6 s |
-| Theme overrides (`add_theme_*_override`) are not setters: set them once, never on every update, and not on nodes whose own drawing is hidden | About 25 ms per slide shown; hitches 46 to 6-12 |
-| Creating node trees during play is the expensive part of a slide; GMC caches the PackedScene, not the nodes. Prefer few persistent nodes changed in place (pooled slides, or one display node drawing from data) | A new slide's first frame still costs about 25 ms over a normal one |
-| Keep display content file-driven (pictures by path, timing and text as data) so higher-resolution or replacement art needs no code | The HD frames already swap in by path; a data-driven display keeps that and drops per-show nodes |
-| Load on worker threads at start-up, in display order, a few at a time; VRAM-compress pictures nobody reads back; bake fonts at setup | Effect stalls 0.9 s to under 0.1 s; MSDF freezes of 20 s gone |
-| Text: shape once (`TextLine`) and draw it; avoid a `Label` plus helper nodes per line | Fewer nodes per slide, no Label layout per update |
-| A separate process per screen group (game + DMD; PuP videos) isolates freezes but costs a second Vulkan context and 300-500 MB; fix the stalls at their source first | - |
-| Power mode: per-core clock beats core count on the main thread (Xavier NX mode 5, 4 x 1.91 GHz, over mode 8, 6 x 1.42 GHz) | Mode 8: same FPS, more hitches |
-| Memory: budget the whole board (OS + MPF + Godot + video memory, shared on a Jetson) and soak-test a full hour | Tron: Godot 1.46 GB at start, about 2.0 GB after the first game, then flat for 6 games (2.02 GB peak); board 3.7 GB peak. Owner's target: under 4 GB where it costs no stutter |
-
-**A display drawn from data (Tron, 2026-10-12).** Tron's display effects went from node scenes to data in two steps,
-each switchable for A/B runs; what worked:
-
-- **Pool the slides first** (cheap, safe): override `MPFSlide.remove()` to park the slide out of the tree instead of
-  `queue_free()`, and patch GMC's `get_slide_instance()` to take one back. Godot keeps a node's canvas items and
-  shaped text while it is out of the tree. Two traps: GMC's `initialize` awaits `ready`, so call `request_ready()`
-  on a reused slide; `MPFVariable` updaters unregister in `_exit_tree`, so snapshot each slide's `_updaters` (and its
-  nested scenes') before removing and restore them after. Reset every timed node to time 0 with no values, and test
-  that a reused slide renders exactly as a new one.
-- **Then one picture per screen**: generate each effect as data (rectangles, a frame list naming picture files,
-  text lines with their ROM layout) next to its node scene; keep each effect's GMC slide as one node holding time
-  and values, so priorities, queues and expiry stay GMC's; draw the top effect's list into a fixed-size
-  `SubViewport` with `UPDATE_ONCE`, re-armed only when the list changes. Few canvas items, a fixed set of them, and
-  no render when nothing changed: on x86 software rendering the median frame fell from 29.9 to 5.8 ms; on the Xavier
-  NX (full game, mode 5) frames over 2 vblanks fell from 139 to 14, over 100 ms from 6 to 1, GPU 60% to 43%, 8.8 to 7.2 W.
-- **Keep the content open**: the data names pictures by path (HD twins swap in by path), and a hand-made scene
-  at a known path (Tron: `game/dmd_custom/<deff>.tscn`) replaces an effect's data, so videos or redrawn effects
-  need no code change. Keep the node scenes generated as the reference: a test renders every effect both ways and
-  compares (Tron: all 145 classic effects dot for dot).
-- **Memory comes with it**: preload only the pictures the data names (in HD, not the classic ones as well) and point
-  identical frames of different effects at one file (Tron: 417 of 4123 frame entries). Godot resident 980 to 890 MB,
-  video memory 710 to 609 MB, effects preload 9.5 to 5.3 s on x86; on the Xavier NX video memory 627 to 545 MB,
-  board peak 3.61 to 3.50 GB.
-- Godot traps met: JSON numbers load as floats (`&` on them fails; convert whole numbers back to `int`); a
-  `Font.draw_string` per line uses the font's shaped-text cache, so shaping happens once; ADD-blended glow layers
-  need their own canvas item with a `CanvasItemMaterial`; clip a zoomed line with `canvas_item_set_clip` and a
-  custom rect on its own layer.
+Moved to [MPF-Godot-Packaging `platforms/godot-performance.md`](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/godot-performance.md) on 2026-10-27
+(Godot / GMC findings are kept there; the display method is in [agents/improvement.md](../agents/improvement.md), section 2a).
 
 ### Portability
 - utf-8 and LF for every generated file, `/` in `res://` paths, long paths on Windows.
 - OneDrive folders: deletes/renames fail transiently; wrap them in retries (`scripts/fsutil.py`), and in
-  shared caches keep the existing file when a replace races another worker.
+  shared caches keep the existing file when a replace races another worker, and treat a cache entry that
+  cannot be opened (another worker is replacing it: PermissionError on Windows) as a miss, not a failure.
 
 ### SAM hardware [SAM]
 - Dedicated switches use SAM numbering D1-D24 (PinMAME `sam.c`): coin 3, flippers/EOS 9-12, upper EOS 14,
@@ -186,6 +171,31 @@ each switchable for A/B runs; what worked:
 - P-ROC numbers (libpinproc `PRDecode`, SternSAM): matrix n → `32 + 8*((n-1)/8) + 7-((n-1)%8)` when
   `(n-1)%16 < 8`, else `32 + n-1`; dedicated n → `n+7`; coil n → `n+31`; lamp n →
   `80 + 16*(7-((n-1)%8)) + (n-1)/8`. Generate the address file, never hand-write it.
+- libpinproc to build (code, checked 2026-10-13 on Tron): `preble/libpinproc` branch `dev` (v2.1, last commit
+  286c566, 2020-08, Multimorphic) is the newest; `missionpinball/libpinproc` is an older snapshot (34 commits
+  behind, one warning fix ahead) with the same SAM code. Pair it with `missionpinball/pypinproc` (Python 3).
+- `PRDecode` strings must be exactly 2 digits: `S05`, `C05`, `L05`, `SD3` or `SD03`. `S5`, `C5`, `L5` silently
+  decode to 0 (atoi), a bare integer is taken as a raw P-ROC number, `S100` decodes to 40. Test the generated
+  addresses against a port of `PRDecode` (Tron: `tests/test_proc.py`, identical to the compiled C on 351 strings).
+- libpinproc safety on SAM (code): it refuses to open when the board's Stern/WPC setting disagrees with the
+  machine type (`PRDevice::Create`; the comment in `PRHardwareOpen` saying there is no check is stale), it
+  rejects a driver polarity that differs from the Stern default (active high), it tickles the IO board's
+  watchdog and arms the P-ROC's own (1 s, MPF `use_watchdog`). Only driver groups 4-7 (coils 1-32) and 10-25
+  (lamp matrix) are enabled: a `C33`+ address decodes to an inactive driver, never to an aux-bus output.
+- Dimming on a P-ROC with SAM boards (code, Tron 2026-10-13): libpinproc's only PWM is the FPGA's patter, whole
+  milliseconds on and off (pulse up to 255 ms; `schedule` is a 32-slot blink pattern, not PWM). Its LED colour
+  and fade calls are for Multimorphic PD-LED boards only. The lamp matrix scan is set per driver group by
+  `slowTime`, in microseconds (libpinproc's `pinproctest/drivers.cpp`: `startStrobeTime` is obsolete, the
+  matrix loops as fast as the groups' slow times add up). libpinproc's Stern defaults: 16 lamp groups (10-25)
+  of 400 us, two groups per strobe line, so a lamp gets 400 us in a ~6.4 ms loop (inferred from the config;
+  stock SAM is 10 lines of 1 ms). `slowTime` can be changed after start with pypinproc
+  `driver_update_group_config` (custom code; MPF's `lamp_matrix_strobe_time` only reaches PDB boards); the
+  FPGA's lower limit is not documented. MPF dims a matrix lamp with a patter of at most 20 ms period (0.5 = 1 on
+  / 1 off). Inferred: a whole-millisecond patter against that loop gives uneven duty,
+  so dimmed matrix LEDs flicker or snap to full/off; keep matrix lamps on/off as the ROM does, and do any LED
+  fading in a show at full steps or on hardware built for it (the RGB tubes: aux-bus bit planes, as the ROM).
+- MPF's p_roc platform treats `SD0`-`SD7` as "first eight direct inputs" (PDB meaning); harmless on SAM,
+  whose numbers never use the `x/y` matrix form that conflicts with it.
 - Flippers: 40 ms pulse, hold 1 ms every 12 ms (`default_hold_power: 0.083`). Slings and pops are fired
   by CPU software on SAM; on a P-ROC make them hardware rules.
 - Coil pulse widths live in the ROM's coil table and hardware rules (decoded for Tron: generate the MPF

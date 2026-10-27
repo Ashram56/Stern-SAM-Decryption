@@ -3,6 +3,9 @@
 > **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
 > Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
 > access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+> **Route it:** ROM extraction and re-coding learnings stay here; anything about Godot, GDE GoZen, GMC, MPF, a
+> platform or a board (decoders, kernel, sound, screens, frame rates, installers' toolchain) goes to
+> [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) instead (its CONTRIBUTING.md), with at most a pointer here.
 
 Game agnostic. From a Visual Pinball X table (`.vpx`), produce what MPF Monitor needs (the playfield picture
 and every switch, lamp and flasher placed on it, named as the MPF machine config names them) and the table's
@@ -68,7 +71,11 @@ python tools/vpx/vpx_map.py out --names <Tron-Legacy-MPF>/assets/mpf_package/con
 
 - Bounds 0, 0, 952, 2115; playfield `Tron_Playfield` 2048x4096 (GameData IMAG); 207 image streams (2 legacy
   BITS, not decoded); 1,032 items; `script.vbs` 4,913 lines.
-- `switches_all.csv` 308 rows, `lights_all.csv` 380.
+- `switches_all.csv` 308 rows, `lights_all.csv` 380. Its `color` / `color2` columns are each light's colour
+  (falloff) and full colour (centre), `#rrggbb`. The insert's colour is `color`; `color2` is often white (the
+  hot spot) and is no guide. `color` can be dark (Tron `l45` Flynn's Arcade: `#004000`): scale it so its
+  brightest channel is near full (`#00ff00`). Tron's service backglass draws each insert that way
+  (Tron-Legacy-MPF `game/monitor/light_colors.csv`).
 - `switches.csv` 44 switches: 1-4, 7, 8, 11-14, 18-32, 34-39, 41, 43, 44, 46, 48-56.
 - `lights.csv` 72 rows: 64 lamps (1-66 without 41 and 44, which have no object; 65 and 66 are `l01`/`l02`
   below the playfield, the start and tournament button lamps) and 8 flashers (solenoids 17, 18, 21, 26, 27, 29, 31, 32).
@@ -217,4 +224,4 @@ made, what went on the cabinet strip, and the overlay verdict. List what needs t
 
 - 2026-10-11: `--device-size` (bigger markers, none overlapping) after the Transformers owner asked for bigger icons.
 
-Last updated 2026-10-11.
+Last updated 2026-10-18 (light colours in `lights_all.csv`).

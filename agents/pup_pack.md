@@ -3,6 +3,9 @@
 > **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
 > Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
 > access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+> **Route it:** ROM extraction and re-coding learnings stay here; anything about Godot, GDE GoZen, GMC, MPF, a
+> platform or a board (decoders, kernel, sound, screens, frame rates, installers' toolchain) goes to
+> [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) instead (its CONTRIBUTING.md), with at most a pointer here.
 
 Game agnostic. Play a PuP Pack (the videos, pictures and music a PinUP Player setup shows around a Visual
 Pinball table) with the MPF game, at the same moments PinUP Player would, without Visual Pinball or PinMAME:
@@ -127,6 +130,41 @@ install again). Its README lists the files, the one-line hooks and every setting
 - **Say why the PuP is off**: `run.py` prints one line (`PuP on: ...` or what is missing). Without it, a missing
   conversion looks like a broken install (it did on Tron's first launch).
 
+### Remote screens: a PuP screen on another computer (Tron's remote topper)
+
+A PuP screen can play on a small computer of its own (a Raspberry Pi with its screen in the topper) instead of a
+window on the cabinet's PC. Built on Tron (Tron-Legacy-MPF `game/tron_pup/remote.py`, `remote/topper/`,
+`docs/pup/remote_topper.md`, 2026-10-19; tested with a desktop mpv, not yet on a Pi). Not in the runtime yet: port
+it when a second game wants it. The method:
+
+- **The server in MPF, not in Godot**: the PuP mode hands every command to an asyncio TCP server in MPF's own loop
+  (`asyncio.ensure_future(server.start(), loop=machine.clock.loop)` in `mode_init`) as well as to Godot. The
+  remote screen then plays whether or not the cabinet has a window for it, and the server is unit-testable on a
+  plain asyncio loop. Off by default (`[remote] enabled`): a desktop that opens a listening port gets a
+  firewall prompt on Windows.
+- **The display connects to the game** and finds it by a UDP broadcast the server answers (same port number as
+  TCP), so neither side needs the other's address; a fixed host stays possible for networks that drop
+  broadcasts.
+- **The display keeps PinUP Player's rules itself** (a standard-library Python port of the Godot screen's rules,
+  one file the installer copies to the Pi): only the display knows when its own video ends, which brings the
+  background back. Sending it pre-decided "play file X" commands would need the game to guess video ends.
+- **The welcome carries the state**: each screen's `screens.pup` background, `playlists.pup` order and volume
+  (the display needs only the media files, never the pack), and the commands that set what shows now (last
+  SetBG, a running looping play). Applied in one go, so a display joining late, or a game restarting, doesn't
+  restart a loop already on screen. A ping every few seconds lets the display tell the game is gone.
+- **One player for two layers**: on a Pi, one mpv straight to the screen (DRM, no desktop) on its JSON IPC socket.
+  The pop-up layer while it plays, else the underlay, resumed at its position (observe `time-pos`). Use
+  `set_property` for `loop-file`, `start` and `volume` before a plain `loadfile <path> replace`: `loadfile`'s
+  options argument moved in mpv 0.38, and Raspberry Pi OS Bookworm ships 0.35. Only `end-file` with reason `eof`
+  is a video end (a replace sends `stop`).
+- **Media as they are**: a Pi (Zero W, 3, 4) decodes H.264 in hardware up to 1080p30, so copy the pack's mp4s and
+  re-encode only what it can't take (not H.264, above 1920x1080 or 30 fps, 10-bit or 4:4:4), saying which.
+  Probe with `ffmpeg -i` (no ffprobe needed). Copy over SSH with rsync, a manifest keyed by pack path.
+- **Pi choice** (inferred from specs): a 3 A+ (four cores) plays comfortably; a Zero W has the same decoder but
+  one ARMv6 core, and current players copy each frame through it (`--hwdec=v4l2m2m-copy`): fine for small
+  videos at best. omxplayer, which avoided the copy, exists only on the legacy OS.
+- MPF event handlers must take `**kwargs` by that name: a `lambda **kw` handler fails MPF's signature check.
+
 ## 6. Video playback per platform
 
 **Play the pack's mp4s as they are, never convert them** (the owner's rule, 2026-10-10: converting a 1 GB pack
@@ -138,30 +176,15 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
 |---|---|---|
 | Windows x86_64 | GDE GoZen (FFmpeg), the pack's mp4s as they are; the GPU decodes through FFmpeg's Direct3D 11 Video hwaccel, else DXVA2 (any GPU vendor, nothing to install), frames copied back as NV12; software when the GPU cannot | the same player and optimizations as Linux (frame queue, worker-thread opens, NV12 upload). The native video add-on stays installed as the fallback, picked by a setting (Tron: `[pup] video_player="native"` or `TRON_VIDEO_PLAYER=native`) |
 | macOS | a native video GDExtension (AVFoundation), the pack's mp4s as they are | Godot 4.6+; Tron carries a fixed build (a heap overrun upstream): never replace a patched add-on with the upstream zip |
-| Linux x86_64 / arm64 | GDE GoZen (FFmpeg) | on a Jetson, NVIDIA's hardware decoder through libnvmpi (packaging agent, section 5a) |
+| Linux x86_64 / arm64 | GDE GoZen (FFmpeg) | on a Jetson, NVIDIA's hardware decoder through libnvmpi ([MPF-Godot-Packaging `platforms/jetson.md`](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/jetson.md)) |
+| Raspberry Pi 4 (Linux arm64) | GDE GoZen with `h264_v4l2m2m` and a zero-copy patch (EGLImage of the decoder's dmabuf) | opt-in; the GPU is the limit with 1080p layers: unshaded YUV shader, layers hidden under an opaque video neither drawn nor decoded, no full-window `ColorRect`, optional lower render size (packaging agent, section 5d) |
 | Anywhere, fallback only | mp4 -> Theora conversion at setup (ffmpeg with libtheora, or imageio-ffmpeg in the venv) | slow on the first setup; later runs redo only changed files |
 
-- **One player everywhere it can be.** Windows first used the native add-on (Media Foundation): the owner saw
-  audio/video stutter and drift. GoZen on Windows shares every fix made for the Jetson. (observed, Tron owner,
-  2026-10-10)
-- **A video switch must never wait for a worker** (`tools/pup/runtime/pup_addons/gde_gozen/video_playback.gd`
-  `close()`): GDE GoZen's player waited on the main thread for the screen's open or loop-restart task. A playlist
-  switching during a loop restart (Tron: the end of Light Cycle Multiball, background and info screens switching
-  together) froze every screen 0.3-0.6 s on a Xavier NX, in 2 full games of 5. The closed video now goes to the
-  worker that frees it once that task is done, and the open and restart tasks take the video they work on instead of
-  reading the node's (observed, Tron, 2026-10-12).
-- **The GoZen Windows build** is a MinGW-w64 cross build in Docker (Tron: `scripts/build_gozen.sh windows`,
-  `scripts/gozen/build_windows_in_docker.sh`, the hwaccel code in `scripts/gozen/gozen.patch` under `_WIN32`):
-  FFmpeg 7.1 trimmed to the pack's codecs, `--enable-d3d11va --enable-dxva2` with the h264/hevc/vp9 hwaccels,
-  asm on, everything static, so the DLL imports only Windows' own DLLs; LGPL (no `--enable-gpl`/`nonfree`).
-  One D3D11 device serves every video (FFmpeg locks it). A cloud session cannot test the GPU: Wine loads the DLL
-  and decodes in software, the GPU test is the owner's. (code, Tron-Legacy-MPF-PuP PR #15)
-- **Check the decoder without the game** (Tron: `python scripts/pup/video_check.py`): decodes a few pack videos
-  on the GPU, then with `GOZEN_HWDEC=0`, and prints per video the decoder and how many times faster than real
-  time it runs. Tron on a Ryzen 7 7800X3D: GPU (d3d11va) about 1.0 ms per 1080p frame, 33x real time (the copy
-  back from the GPU costs most of it); software 0.3 to 0.5 ms, 63x to 117x, but on all cores. Either way decoding
-  is not a desktop PC's bottleneck: the GPU path is the default because it leaves the CPU to MPF and Godot.
-  (observed, 2026-10-10)
+- **How the players behave** (one player everywhere, a switch never waits for a worker, the GoZen Windows build,
+  checking the decoder without the game) moved to [MPF-Godot-Packaging `platforms/video-playback.md`](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/video-playback.md)
+  on 2026-10-27, with the decoder fixes in its `fixes/gde-gozen/` (decode queue fill, hardware decoding order). Add new
+  player, decoder and VideoCore findings there. (Tron)
+
 
 ## 7. Packaging and keeping up with the game
 
@@ -234,7 +257,7 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
 | Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the game's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) (the fork merged back 2026-10-10) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers; not yet on `tools/pup/runtime/` |
 | Transformers Pro 1.80 | `tf_180` v1.0 by TerryRed, private copy `Ashram56/Transformers-PuP` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `claude/pup-pack` (in the game repo, not a fork) | Built on `tools/pup/runtime/`: backglass with its five overlay boxes, DMD in the pack's art, topper, the pack's music; every capture in use mapped, each variant checked against the ROM's animation tables; GoZen with d3d11va on Windows (1080p at 4.3 ms a frame, Ryzen 7 2700), Godot 4.6.3; seen running a Blackout battle on Windows |
 
-Keep this file current. Last updated 2026-10-12 (music preloaded on a worker; a video switch never waits for a worker; DMD sized in mm on bar panels, full size or with the background's action; before 2026-10-10: Tron's fork merged back into the game repo: build in the game repo, optional private pack in installers; before: variants from the ROM's animation tables, not the pack's row order; before: the runtime in `tools/pup/runtime/` with GoZen on Windows,
+Keep this file current. Last updated 2026-10-27 (remote screens: Tron's remote topper on a Raspberry Pi; player behaviour moved to MPF-Godot-Packaging; before 2026-10-12: music preloaded on a worker; a video switch never waits for a worker; DMD sized in mm on bar panels, full size or with the background's action; before 2026-10-10: Tron's fork merged back into the game repo: build in the game repo, optional private pack in installers; before: variants from the ROM's animation tables, not the pack's row order; before: the runtime in `tools/pup/runtime/` with GoZen on Windows,
 conditions on arguments and the player's state, whole-frame captures, never convert; from the Transformers pack;
 before: Windows plays the pack through GoZen with GPU decoding, fork layout and sync lessons, the PuP Pack agent,
 the format page and `tools/pup/`, from the Tron work in Tron-Legacy-MPF-PuP and Tron-LE-PuP-Pack).

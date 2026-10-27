@@ -139,6 +139,10 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
   repository, on any game, reports every game-agnostic learning here in the same session without being asked:
   a **pull request** when it (or the owner it works for) has write access to Ashram56/Stern-SAM-Decryption, else
   a **GitHub issue** on it, opened directly with no user step. It says in its report which PR or issue it opened.
+- **Route by topic.** This repository is ROM extraction and re-coding (agents A to E's rules and the knowledge about
+  them). Findings about Godot, GDE GoZen, GMC, MPF, a platform or a board (video decoders, VideoCore, kernel, sound,
+  screens, frame rates, installer toolchains) go to [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) (its `fixes/` and
+  `platforms/`; its CONTRIBUTING.md), with at most a pointer here. Every sub-agent applies this itself.
 - **Keep these docs current.** When a thread learns something that changes how a later agent would work (a
   method, a fact, a mistake and its fix, an owner decision), fold it in, in the same session, as above:
   ROM methods in rom_extraction.md, build facts in the playbook or recreation.md, install and run facts in
