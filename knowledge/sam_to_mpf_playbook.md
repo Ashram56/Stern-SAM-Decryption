@@ -129,6 +129,30 @@ New GMC / Godot gotchas go to [MPF-Godot-Packaging](https://github.com/Ashram56/
   (Windows Godot listens on IPv6 only).
 - Regenerating media deletes Godot's `.import` files; reimport after. Generated media is git-ignored, so
   after any pull it is stale: stamp the inputs and regenerate automatically on launch.
+- **A colour LED DMD (PIN2DMD) needs no new platform code** [code, MPF 0.80.1]: MPF ships `mpf/platforms/pin2dmd.py`
+  (pyusb, USB `0314:e457`, "virtual pinball" bit-plane packets `81 C3 E9 12`) and an `rgb_dmds` device that takes
+  12288-byte RGB frames (128x32, row by row) over BCP as `rgb_dmd_frame` (name must be `default`). With GMC the game
+  only reads back its own 128x32 picture (`get_viewport().get_texture().get_image()`, same as a P-ROC `dmd_frame`
+  feeder) and sends it; GMC needs no screen for that. Overlay: `hardware: rgb_dmd: pin2dmd`, `pin2dmd: resolution:
+  128x32`. Unit-test with `usb.core.find` mocked and call the device's `_send_frame` (the feeder runs in an executor
+  thread the test loop does not run). Tron: `game/tools/pin2dmd.gd`, `game/config/pin2dmd.yaml` (Tron-Legacy-MPF
+  PR #56); not yet tried on a real PIN2DMD (colour order, firmware).
+- **A ZeDMD: MPF's own platform is fragile, write the serial client** [code, MPF 0.80.1; protocol from libzedmd, not
+  captured]: `mpf/platforms/zedmd.py` needs libzedmd's compiled pybind11 extension, built for one Python each (it did
+  not import on Python 3.13: `undefined symbol _PyThreadState_UncheckedGet`), and picks the library with
+  `platform.machine in (...)` (the function, never called), so a Raspberry Pi loads the x64 one. A platform of your own
+  (`mpf: platforms: name: module.Class`, pyserial only) works everywhere: handshake `FRAME` `ZeDMD` 0x0c, 64-byte reply
+  (`ZeDM`, width/height u16 LE at 4/6, write size at 11, byte 57 'R'), the changed 8x4 zones as RGB888
+  (`FRAME` `ZeDMD` 0x04 size-hi size-lo 0, per zone its index then 96 bytes, black zone = index + 128), `ZeDMD` 0x06
+  render, 0x0a clear, every write-size block answered `ZeDMD` `A`; 921600 baud (115200 on the ESP32-S3's own USB).
+  For less CPU, a small C feeder reading raw RGB frames on stdin (Godot starts it with `OS.execute_with_pipe`) skips
+  BCP, MPF and Python; cross-compile it with `python -m ziglang cc -target aarch64-linux-gnu` (pip `ziglang`).
+  Tests: a fake device (pty for the C one). Tron: `game/tron/zedmd_native.py`, `game/native/zedmd_feed/`
+  (Tron-Legacy-MPF PR #56), also in MPF-Godot-Packaging PR #5; not yet tried on a real ZeDMD.
+- **Run the real setup in a clean venv before telling a player to try a branch** [observed]: an optional dependency
+  installed on your own machine (here `lz4`, imported by a new script) hides a missing requirement, and the player's
+  setup then stops with `ModuleNotFoundError`. Also, MPF's event handlers must declare `**kwargs` by that name (a lambda
+  with `**kw` is refused at `add_handler`).
 
 ### GMC + Godot performance on a slow target [GMC] [Godot]
 Moved to [MPF-Godot-Packaging `platforms/godot-performance.md`](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/godot-performance.md) on 2026-10-27
