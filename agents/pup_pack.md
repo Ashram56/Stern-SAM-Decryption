@@ -139,6 +139,7 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
 | Windows x86_64 | GDE GoZen (FFmpeg), the pack's mp4s as they are; the GPU decodes through FFmpeg's Direct3D 11 Video hwaccel, else DXVA2 (any GPU vendor, nothing to install), frames copied back as NV12; software when the GPU cannot | the same player and optimizations as Linux (frame queue, worker-thread opens, NV12 upload). The native video add-on stays installed as the fallback, picked by a setting (Tron: `[pup] video_player="native"` or `TRON_VIDEO_PLAYER=native`) |
 | macOS | a native video GDExtension (AVFoundation), the pack's mp4s as they are | Godot 4.6+; Tron carries a fixed build (a heap overrun upstream): never replace a patched add-on with the upstream zip |
 | Linux x86_64 / arm64 | GDE GoZen (FFmpeg) | on a Jetson, NVIDIA's hardware decoder through libnvmpi (packaging agent, section 5a) |
+| Raspberry Pi 4 (Linux arm64) | GDE GoZen with `h264_v4l2m2m` and a zero-copy patch (EGLImage of the decoder's dmabuf) | opt-in; the GPU is the limit with 1080p layers: unshaded YUV shader, layers hidden under an opaque video neither drawn nor decoded, no full-window `ColorRect`, optional lower render size (packaging agent, section 5d) |
 | Anywhere, fallback only | mp4 -> Theora conversion at setup (ffmpeg with libtheora, or imageio-ffmpeg in the venv) | slow on the first setup; later runs redo only changed files |
 
 - **One player everywhere it can be.** Windows first used the native add-on (Media Foundation): the owner saw
