@@ -282,6 +282,7 @@ above; the Tron board design is in the Tron project's files, `hardware/fiber_emi
 | `isr_schedule.csv` | the 4-phase IO tick schedule with emulator and hardware offsets |
 | `timing_measurements.csv` | every timing number above, with its source and tag |
 | `lamp_matrix_map.csv` | 80 lamps: strobe line, drive bit, J12/J13 pins, RAM bit |
+| `jlc_assembly.md` | ordering a replacement board assembled at JLCPCB: CPL rotation offsets checked against EasyEDA, origins, pad numbering |
 | `CPU_BOARD_IO.md` | every CPU-board interface besides J1: DMD, audio, DAC volume, switches, RTC, serial ports, other chip selects |
 | `cpu_board_interfaces.csv` | everything else the CPU drives: switches, DMD, sound, timers, serial, chip selects |
 | `peripheral_init.csv` | every AT91 on-chip peripheral write during boot, in order (EBI, AIC, PIO, PS, TC, USART) |
