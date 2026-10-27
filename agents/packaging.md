@@ -295,6 +295,25 @@ any SAM game or any new board (a Pi 5, an Orange Pi, another Jetson). All observ
   shows fewer frames than the video has. Re-encoding the videos to 720p cuts it 4 to 6 times but the owner may
   refuse to touch the pack; `Window.content_scale_size` (a lower render size, videos untouched) is the other lever
   (1280x720: +38 % fps).
+- **The driver's STREAMOFF returns too early (kernel bug, any `h264_v4l2m2m` user).** In `bcm2835-codec`
+  (code: `drivers/staging/vc04_services/bcm2835-codec/bcm2835-v4l2-codec.c`, Raspberry Pi kernel 6.18), the buffer
+  callbacks `ip_buffer_cb` and `op_buffer_cb` signal the end of a stop with
+  `if (!port->enabled && atomic_read(&port->buffers_with_vpu)) complete(&ctx->frame_cmplt);`: the test is inverted,
+  so the completion fires on the *first* buffer returned and `stop_streaming` comes back while buffers are still
+  with the VPU. Symptoms in `dmesg` (observed, Pi 4B): `videobuf2_common: driver bug: stop_streaming operation is
+  leaving buffer N in active state`, WARNINGs in `__vb2_queue_cancel` and in `vb2_buffer_done` called from
+  `buffer_work_cb`, and now and then a NULL dereference in `dma_release_from_dev_coherent` (`vb2_dc_put` from a
+  dmabuf release) that needs a reboot. Every close or loop of a video is a STREAMOFF, so a PuP Pack hits it within
+  minutes, with or without dmabuf zero-copy. Fix: `!atomic_read(...)` at the three places that test it (complete
+  when no buffer is left with the VPU). Build the module out of tree against the matching `linux-headers` package
+  (cross-build it, not on the board) and load it in place of the stock one (`rmmod bcm2835-codec; insmod ...`, or
+  install it in `/lib/modules/$(uname -r)/updates/` and run `depmod -a` so it wins at boot); rebuild it at every
+  kernel update until the fix is upstream. Check `dmesg` for the warning after a soak, not only that videos play.
+- **A hardware decoding switch keyed to one board decodes in software on the next.** A game that turns hardware
+  decoding on only when it finds Jetson device nodes (`/dev/nvhost-*`) silently runs software decoding on a Pi 4,
+  and a benchmark that forces the environment variable (Tron: `GOZEN_HWDEC=1`) hides it (code). Detect each
+  board's decoder (`/dev/video10` with `bcm2835-codec` on a Pi), and check the startup log line (for example
+  "software decoding") of the *installed service*, not of a hand-started run.
 - Pi sound and screens, found on the way: the 3.5 mm jack card is missing on trixie (`snd_bcm2835.enable_headphones=0`
   in the DTB bootargs: append `snd_bcm2835.enable_headphones=1` to `cmdline.txt`); a screen that sends no EDID and is
   forced with `video=HDMI-A-n:1920x1080@60D` gets no HDMI audio (vc4 treats it as DVI): give it an EDID with a CEA
@@ -314,11 +333,15 @@ covered layers neither drawn nor decoded, no full-window `ColorRect`, `render_si
 **C. Measuring (any new board)**: compare at the same frame rate and report the video lag (median and the 95th
 percentile) and the frames over 50 ms, not CPU percent alone (a lower CPU at a lower frame rate proves nothing);
 three runs per variant, because random video picks move the frame rate by 15 %; stop the game and any build while
-measuring; the GPU's queue time (`gpu_stats`), ALSA underruns and `vcgencmd get_throttled` go in every row.
+measuring; the GPU's queue time (`gpu_stats`), ALSA underruns and `vcgencmd get_throttled` go in every row. Measure the video lag
+(the decoded frame's time against its presentation time) for every decoding configuration: on a slow board
+software decoding can show a high frame rate while it delivers the videos several seconds late with the CPU
+saturated, whereas V4L2 hardware decoding with dmabuf zero-copy keeps the lag near zero at about half the CPU
+(observed, Pi 4B). Frame rate and CPU alone pick the wrong configuration.
 
 ## 6. Status and open work per game
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-24 (Raspberry Pi 4: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-25 (Raspberry Pi 4, 5d: the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
