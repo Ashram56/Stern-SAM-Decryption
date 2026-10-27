@@ -3,6 +3,9 @@
 > **Feed back what you learn.** Whatever game you run this agent on, report every game-agnostic learning to
 > Ashram56/Stern-SAM-Decryption in the same session, without being asked: a pull request if you have write
 > access, otherwise a GitHub issue opened directly. How and what: [CONTRIBUTING.md](../CONTRIBUTING.md).
+> **Route it:** ROM extraction and re-coding learnings stay here; anything about Godot, GDE GoZen, GMC, MPF, a
+> platform or a board (decoders, kernel, sound, screens, frame rates, installers' toolchain) goes to
+> [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) instead (its CONTRIBUTING.md), with at most a pointer here.
 
 Make the game installable and runnable by the owner on every platform the master plan targets, with **one
 line to install** and **one command to run** per platform: Windows, macOS, Linux, plus the options for each
@@ -13,6 +16,10 @@ scripts, rename, and keep them in step. File paths in `code` are the Tron game r
 "Packaging" here is the game's **install and run kit**. It is not the ROM extraction's MPF asset package
 (`mpf_package/`, agent A's `AGENTS.md` section 10) and not the game itself (agent C).
 
+> **Routing rule (Vincent, 2026-10-27):** anything about Godot, GDE GoZen, GMC, MPF, a platform or a board (video
+> decoders, kernel, sound, screens, frame rates) belongs in MPF-Godot-Packaging, not here. This repository is ROM
+> extraction and re-coding.
+>
 > **The game-agnostic kit:** [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) installs
 > MPF, MPF Monitor, Godot and the patched GMC with one line per OS (Jetson included), documents every fix to MPF,
 > GMC, Godot and the video add-ons one file each with an upstream issue draft (`fixes/`), and every platform finding
@@ -135,6 +142,10 @@ soon as the game repo exists:
   in the environment, inherited by `setup.py`), and hand it to the credential helper for later pulls. Never
   open Git Credential Manager's window. A private repository answers 404 to `curl`/`irm` without a token, so
   the one line cannot fetch itself: document clone-then-run for that case.
+- **Testing the token step on macOS CI**: run it with `GIT_CONFIG_NOSYSTEM=1` as well as a temporary HOME.
+  Homebrew git's system config sets `credential.helper=osxkeychain`, which hangs in `git credential approve` when
+  HOME has no keychain, so the test times out on `macos-latest` only (observed, Transformers `tests/test_install.py`
+  `test_github_auth`, red on every main push from 2026-10-10 until the fix, 2026-10-22).
 - **A private pack repository next to a public game**: when the only private repository is an optional one
   (Transformers: the PuP Pack's submodule, the owner's copy), the token step must not stop the install. With no
   token, `--yes`, an empty answer or a token that cannot read it, say the game installs without that part and
@@ -172,63 +183,16 @@ soon as the game repo exists:
   the tag on GitHub or from a clone (observed, Tron-Legacy-MPF-PuP `jetson-agx-orin-l4t-r36.4.3`). Name the tag and
   the commit in the report.
 
-## 5a. Jetson (Xavier NX, AGX Orin): an ARM cabinet with the PuP Pack
+## 5a. Jetson and 5d. Raspberry Pi 4: moved to MPF-Godot-Packaging
 
-The Jetson kit lives in the game repository with the PuP Pack (Tron: [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF),
-merged in from the fork Tron-Legacy-MPF-PuP on 2026-10-10), because it exists for the pack's videos: its `docs/jetson/xavier_nx.md` has every finding and figure,
-`docs/jetson/README.md` the video decoding fixes, `docs/performance.md` the measurements. What an installer or launcher
-for a Jetson must do (Tron tested on a Xavier NX Developer Kit, L4T R35.6.4 / JetPack 5.1.4, Ubuntu 20.04, and an
-AGX Orin, L4T R36.4.3 / JetPack 6.2):
-
-- **Install order:** the Linux one line (arm64; Ubuntu 20.04 ships Python 3.8, so Python 3.11 comes from uv), then
-  `scripts/install/install_jetson_hwdec.sh` (libnvmpi from jetson-ffmpeg with `scripts/gozen/nvmpi_flush.patch`,
-  NVIDIA packages pinned to the board's own L4T release: the r36.4 apt repo also offers 36.4.7; config files kept
-  instead of a dpkg prompt; GNOME idle blanking off), then `scripts/install/jetson_selftest.sh --stock`, which must
-  pass every check. JetPack 5 keeps NVIDIA's libraries in `/usr/lib/aarch64-linux-gnu/tegra/`, JetPack 6 in
-  `.../nvidia/`.
-- **Hardware video decoding** is a GDExtension (GDE GoZen) with FFmpeg and the nvmpi decoders linked in, cross-built
-  in Docker (`scripts/build_gozen.sh arm64`) from a clean work folder; the `.so` is committed with its sha256 in the
-  commit message and needs glibc 2.29 at most. No decoder device in `/dev` means software decoding, never a crash.
-- **The same add-on on Windows** (`scripts/build_gozen.sh windows`, a MinGW-w64 cross build in Docker): one
-  static DLL with FFmpeg's Direct3D 11 Video / DXVA2 decoding, nothing else to install, so `setup.py` only copies
-  it (with the native video add-on beside it as the fallback). Details: the PuP Pack agent, section 6.
-- **Session:** X11 (Godot places one window per monitor only there), autologin, no screen blanking (`run.py` runs
-  `xset s off -dpms`). openbox without a display manager works.
-- **Sound:** the Xavier NX devkit's ALSA default is an I2S card with nothing on it; the hwdec install writes a
-  `~/.asoundrc` to HDMI through dmix when there is no PulseAudio or PipeWire.
-- **Power mode:** `sudo nvpmodel -m 5` (10 W desktop, 4 cores at 1.91 GHz) or 8 (20 W). Per-core speed matters more
-  than cores; the 2- and 4-core 10 W modes are not playable. `jetson_clocks` gains nothing. Mode 5 is the only mode
-  with the top CPU clock: the 15 W and 20 W 6-core modes run at 1.42 GHz, so a higher mode does not cure hitches on
-  Godot's main thread (slide creation); fix those in software (improvement agent, section 2a). Tron's full game,
-  2026-10-12: mode 5 56.9 FPS, 70 frames over 100 ms, 8.8 W; mode 8 56.9 FPS, 87 over 100 ms, 8.7 W (observed).
-- **Screens in standby between runs:** `run.py` turns DPMS off for play, so the backlights stay on after it exits;
-  put them to sleep with `xset +dpms; xset dpms force off`. On the Xavier NX (NVIDIA X driver, no desktop
-  environment) a sleeping monitor loses its output's mode, and `xset dpms force on` does not bring it back: redo the
-  session's `xrandr --auto` layout before the next run, or Godot sees one screen, stacks every window on it and
-  runs at 39 FPS instead of 58 (observed, Tron, 2026-10-12: a lost one-hour soak).
-- **Submodules on a board reused across sessions:** a session may have pointed a submodule at a local checkout
-  (`git -C assets remote -v` shows a path); syncing then fails with `transport 'file' not allowed`. Fetch from the
-  GitHub URL directly (`git -C assets fetch <url> main`, then check out `FETCH_HEAD`) instead of rewriting the
-  remote, and copy a private submodule's content (a PuP Pack) from the old checkout when the board has no
-  credentials for it (observed, Tron on the Xavier NX, 2026-10-12).
-- **Screens:** the devkit's DisplayPort has no DP++ mode, so a passive DP to HDMI adapter never works (an active
-  one does); the USB-C port has no video. A panel's EDID refresh rate cannot be overridden (`CustomEDID` is
-  ignored). Cabinet placement goes in the untracked `game/pup.local.cfg`, never in the tracked defaults.
-- **Setup steps that matter on ARM:** `setup.py` bakes the clean HD fonts' signed distance fields
-  (`game/tools/bake_fonts.gd`, about 2 minutes on a Xavier NX; without it the first text froze the game 20 s and
-  more) and `gen_media.py` imports the HD effect frames VRAM-compressed. Both rerun when their inputs change.
-- **Run options**: `run.py --no-render-thread` / `TRON_RENDER_THREAD=0` (Godot's separate render thread is on by
-  default on Godot 4.6.3, where it won with three videos; on Godot 4.5.2 with the DMD alone it lost, so retest it at
-  every Godot upgrade), `TRON_PIN=0` (core pinning, Linux with 4+ cores), `TRON_PERF_DIR` (the performance probe; use
-  `scripts/perf/run.sh`). Each new run option reaches `docker/entrypoint.py` and `docker/tron.env.example` too.
-- **On the board by Remote Control:** the cabinet has no GitHub credentials, so the session there hands its changes
-  back as `git format-patch` files in the project's shared files, and a cloud thread applies, checks and pushes
-  them (observed, Tron on the AGX Orin).
-- **Testing without the board:** an arm64 Ubuntu 20.04 root under qemu, posing as a Xavier NX with NVIDIA's r35.4
-  apt packages, runs the whole Linux install and builds libnvmpi. When Docker Hub rate-limits, build the base
-  image with `debootstrap focal` and `docker import`. Godot renders headless in the cloud with lavapipe
-  (`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`, `--rendering-method mobile`, under `xvfb-run`). Tests
-  that import MPF run on the board.
+Board and platform findings (Jetson Xavier NX / AGX Orin install order, power modes, screens, hardware decoding;
+Raspberry Pi 4 checks, V4L2 decoder, kernel bug, measuring, cross-building) are Godot / GoZen / platform content and
+live in [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging): [platforms/jetson.md](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/jetson.md),
+[platforms/frame-rate-method.md](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/frame-rate-method.md), [platforms/video-playback.md](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/video-playback.md),
+[platforms/godot-performance.md](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/godot-performance.md). Add new board findings there (see
+[CONTRIBUTING.md](../CONTRIBUTING.md), section 2). What stays here: a game's kit must carry what those pages say
+(the Jetson / Pi install step, run options such as `--no-render-thread`, the game's settings) into every installer.
+(Moved 2026-10-27.)
 
 ## 5b. A signed Raspberry Pi image: design facts (not built yet)
 
@@ -266,7 +230,42 @@ page). Doc = Raspberry Pi's documentation read that day; inferred = reasoning, n
 
 ## 6. Status and open work per game
 
+## 5c. Prebuilt bundles: the game with nothing left to build
+
+A ready-made system image (or any base install that already has MPF, Godot and ffmpeg) does not want to run
+`setup.py`: on Tron that is 4 to 8 minutes on a 4-core PC, and 85% of it is computation (media generation, the Godot
+import, the font bake), not downloads (observed). Everything that computation makes is the same on every machine of a
+GPU family, so a **bundle** ships it built: one archive of the game, its generated config, media and sounds, its baked
+fonts and its Godot import (Tron: `scripts/package/build_bundle.py`, `docs/bundle.md`; 235 MB packed, 633 MB
+unpacked). What a bundle builder must get right:
+
+- **Texture formats.** Godot's import always writes the variant the *host* prefers (S3TC/BPTC on a PC) whatever
+  `import_s3tc_bptc` says, and `import_etc2_astc=true` adds ETC2; ARM GPUs (Pi 4's V3D, Jetson) use ETC2 and a PC
+  uses S3TC (observed: 2 595 VRAM-compressed frames came out as both `.s3tc.ctex` and `.etc2.ctex`). Build an ARM bundle on a PC
+  with ETC2 added, then delete the S3TC files **and take `path.s3tc` / the `dest_files` entries / `imported_formats`
+  out of every `.import`**: a GPU that supports both picks the first `path.*` in the file, and its file would be
+  missing (code, from the file's format). A PC without Vulkan (OpenGL fallback) cannot show ETC2 and crashes in
+  `_get_gl_image_and_format`; with Vulkan Godot logs "ETC2_RGB8 not supported by hardware, converting to RGBA8" and runs
+  (observed, lavapipe, whose ETC2 and ASTC are off and BC on).
+- **`.import` files you generate yourself are not tracked**, so a copy that skips `*.import` silently loses their
+  settings: Tron's HD effect frames (VRAM-compressed) came out lossless, 2 765 textures instead of 2 595 + 2 765
+  (observed, the first bundle build). Write them again before the import and check the variant counts after it.
+- **A stale-media check that hashes generator inputs must not run in a bundle** (the inputs are not there): make
+  "bundle.json exists" mean current.
+- **An installer step that copies an add-on from the repository** (Tron: GoZen from `pup_addons/`) must keep what the
+  bundle carries when the source folder is not there; Tron's step deleted the add-on from `game/` and then failed
+  (observed).
+- **Refuse cabinet data**: `game/data`, audits, logs, any `*.local.cfg` and device keys stay out, checked by the builder.
+- **Run only what the game reads from the extraction repo** (Tron: 16 MB of its 460 MB `assets/`): found by running the
+  game under `strace -f -e trace=openat,stat`, not by guessing.
+- **A settings schema** (`options.json`: id, type, range, default, group, where stored) and a small tool that
+  validates and writes it lets a web page configure the game without knowing its files; keep secrets write-only.
+- **The PuP Pack stays out** (the author's zip, installed by the game's own step, `pup_setup.py --pup-zip`); its install
+  needs ffmpeg with libtheora even when the videos are not converted (Tron's `gen_pup.py` looks for it first).
+
+Checked on a PC only (Tron, 2026-10-24); the arm64 bundle on a real Pi 4 or Jetson is the next test.
+
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-19 (5b, signed Raspberry Pi image design facts; 2026-10-12: the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-27 (5b, signed Raspberry Pi image design facts; prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
