@@ -259,6 +259,22 @@ microcontroller on the LED board and let it do the PWM:
 A new power board could take a serial link (SPI or a UART at several Mbaud) and drive constant-current LED drivers per
 lamp. That removes the 1/10 duty limit and the matrix ghosting, but it is a new board, not a new bus.
 
+### E. Replacing a strobed aux board, drop-in (no firmware)
+What a replacement for a strobed aux board (Tron LE's 511-6927-01 TriColor ramp tube board is the worked example)
+must do to work unchanged with the ROM, PinMAME-style drivers and a P-ROC aux program (inferred from the protocol
+above; the Tron board design is in the Tron project's files, `hardware/fiber_emitter/`, not built yet):
+- Latch the data bits on the **rising edge** of its own strobe; the data lines are shared with the other boards.
+  Data is stable about 650 ns before that edge on the ROM's timing, so a small RC (about 20 ns) plus a Schmitt
+  buffer on the strobe is enough filtering for the harness.
+- The aux outputs are 5 V logic. 3.3 V logic with 5 V tolerant inputs (74AHC, 74LVC) works, and the latch output
+  can then serve as the LED current reference (3.3 V from an LDO, divided to about 100 mV across a sense resistor).
+- Switch in a few microseconds: the shortest BCM plane is 250 us, so a linear constant-current sink (op amp +
+  logic-level MOSFET) keeps the 16 levels accurate. Clear the latch at power-up so the LEDs start dark.
+- Design for 100 % on, forever: a stalled strobe (host stopped, a "hold" white colour) leaves the last plane latched.
+- At 5 V with green or blue LEDs (3.3 V) there is little headroom for a switching driver; a linear sink dissipates
+  about 2 W per board at 320 mA per colour, so put the MOSFET tabs on vias to the bottom copper and an insulating
+  thermal pad on a heatsink. Check the 5 V budget: about 1 A per board at full white.
+
 ## Files
 | File | Content |
 |---|---|
