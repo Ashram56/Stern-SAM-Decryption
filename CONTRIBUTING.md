@@ -14,30 +14,37 @@ in the same session, without waiting to be asked.** How it reports depends on it
 Anything that would change how a later game is done, on **any** SAM game, any MPF build:
 
 - a method or tool that worked (or failed, and why), a better order of steps, a check that caught an error;
-- a fact true of every SAM game: hardware, OS, ROM formats, PinMAME, Ghidra, MPF, GMC, Godot, VPX behaviour;
+- a fact true of every SAM game: hardware, ROM formats, PinMAME, Ghidra, VPX behaviour (MPF, GMC, Godot and OS findings: see "Not here");
 - a mistake and its fix, a gotcha that cost time, a correction to anything written here;
 - a tool improvement (`tools/`), with a test when the tool has tests.
 
 Give the finding with its fact tag (observed / code / inferred), the game and ROM version it was found on, and
 that game's value as the worked example (an address, a count, a file).
 
-**Not here**: facts of one game only (its addresses, status, open work, owner decisions, run values: those go
+**Not here**: anything about Godot, GDE GoZen, GMC, MPF or MPF Monitor, or about a platform or board (Windows, macOS, Linux,
+Jetson, Raspberry Pi: video decoders, VideoCore / V4L2, kernel modules, sound, screens, frame rates, the toolchain's
+versions and patches): report it in [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) instead ([its CONTRIBUTING.md](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/CONTRIBUTING.md)); this repository is ROM extraction and
+re-coding. Also not here: facts of one game only (its addresses, status, open work, owner decisions, run values: those go
 on the game's own page), anything extracted from a ROM (images, sounds, tables, decompiles), the ROM itself,
 private or third-party material (colourisation and its tools stay in a private repo, never named here),
 credentials or hostnames.
 
 ## 2. Where it goes
 
+**First decide the repository.** ROM extraction, the game's rules and display recoded, VPX, PuP mapping: here. Godot, GoZen,
+GMC, MPF, platforms and boards, installers' toolchain: MPF-Godot-Packaging (https://github.com/Ashram56/MPF-Godot-Packaging), with at most a one-line pointer
+from here. Same rules there (a PR with write access, else an issue opened directly).
+
 | Topic | File |
 |---|---|
 | Taking a ROM apart: formats, OS, tables, emulator, decompile | [agents/rom_extraction.md](agents/rom_extraction.md) (the section it belongs to) |
 | SAM boards, bus, timing | [knowledge/sam_hardware/](knowledge/sam_hardware/README.md) |
 | OS function names and signatures | [knowledge/sam_os_api.json](knowledge/sam_os_api.json) |
-| Building the game in MPF / GMC / Godot | [knowledge/sam_to_mpf_playbook.md](knowledge/sam_to_mpf_playbook.md) or [agents/recreation.md](agents/recreation.md) |
+| Building the game's rules in MPF (the Godot / GMC side: MPF-Godot-Packaging) | [knowledge/sam_to_mpf_playbook.md](knowledge/sam_to_mpf_playbook.md) or [agents/recreation.md](agents/recreation.md) |
 | VPX table extraction, VPX bridge | [agents/vpx_extraction.md](agents/vpx_extraction.md), [agents/vpx_bridge.md](agents/vpx_bridge.md) |
 | HD display, fonts, look and feel methods | [agents/improvement.md](agents/improvement.md), [knowledge/dmd_hd_upscaling.md](knowledge/dmd_hd_upscaling.md) |
 | PuP Packs: format, trigger mapping, playing them, installing from the author's zip | [agents/pup_pack.md](agents/pup_pack.md), [knowledge/pup_pack_format.md](knowledge/pup_pack_format.md) |
-| Installers, setup, run, platforms | [agents/packaging.md](agents/packaging.md) |
+| A game's installers, setup and run kit (platform, board and toolchain findings: MPF-Godot-Packaging) | [agents/packaging.md](agents/packaging.md) |
 | The plan itself, the order, the inputs | [agents/README.md](agents/README.md) |
 | A tool | `tools/` (its README too) |
 
