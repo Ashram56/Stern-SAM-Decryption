@@ -196,7 +196,42 @@ live in [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Pac
 
 ## 6. Status and open work per game
 
+## 5c. Prebuilt bundles: the game with nothing left to build
+
+A ready-made system image (or any base install that already has MPF, Godot and ffmpeg) does not want to run
+`setup.py`: on Tron that is 4 to 8 minutes on a 4-core PC, and 85% of it is computation (media generation, the Godot
+import, the font bake), not downloads (observed). Everything that computation makes is the same on every machine of a
+GPU family, so a **bundle** ships it built: one archive of the game, its generated config, media and sounds, its baked
+fonts and its Godot import (Tron: `scripts/package/build_bundle.py`, `docs/bundle.md`; 235 MB packed, 633 MB
+unpacked). What a bundle builder must get right:
+
+- **Texture formats.** Godot's import always writes the variant the *host* prefers (S3TC/BPTC on a PC) whatever
+  `import_s3tc_bptc` says, and `import_etc2_astc=true` adds ETC2; ARM GPUs (Pi 4's V3D, Jetson) use ETC2 and a PC
+  uses S3TC (observed: 2 595 VRAM-compressed frames came out as both `.s3tc.ctex` and `.etc2.ctex`). Build an ARM bundle on a PC
+  with ETC2 added, then delete the S3TC files **and take `path.s3tc` / the `dest_files` entries / `imported_formats`
+  out of every `.import`**: a GPU that supports both picks the first `path.*` in the file, and its file would be
+  missing (code, from the file's format). A PC without Vulkan (OpenGL fallback) cannot show ETC2 and crashes in
+  `_get_gl_image_and_format`; with Vulkan Godot logs "ETC2_RGB8 not supported by hardware, converting to RGBA8" and runs
+  (observed, lavapipe, whose ETC2 and ASTC are off and BC on).
+- **`.import` files you generate yourself are not tracked**, so a copy that skips `*.import` silently loses their
+  settings: Tron's HD effect frames (VRAM-compressed) came out lossless, 2 765 textures instead of 2 595 + 2 765
+  (observed, the first bundle build). Write them again before the import and check the variant counts after it.
+- **A stale-media check that hashes generator inputs must not run in a bundle** (the inputs are not there): make
+  "bundle.json exists" mean current.
+- **An installer step that copies an add-on from the repository** (Tron: GoZen from `pup_addons/`) must keep what the
+  bundle carries when the source folder is not there; Tron's step deleted the add-on from `game/` and then failed
+  (observed).
+- **Refuse cabinet data**: `game/data`, audits, logs, any `*.local.cfg` and device keys stay out, checked by the builder.
+- **Run only what the game reads from the extraction repo** (Tron: 16 MB of its 460 MB `assets/`): found by running the
+  game under `strace -f -e trace=openat,stat`, not by guessing.
+- **A settings schema** (`options.json`: id, type, range, default, group, where stored) and a small tool that
+  validates and writes it lets a web page configure the game without knowing its files; keep secrets write-only.
+- **The PuP Pack stays out** (the author's zip, installed by the game's own step, `pup_setup.py --pup-zip`); its install
+  needs ffmpeg with libtheora even when the videos are not converted (Tron's `gen_pup.py` looks for it first).
+
+Checked on a PC only (Tron, 2026-10-24); the arm64 bundle on a real Pi 4 or Jetson is the next test.
+
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-27 (Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-27 (prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
