@@ -194,6 +194,40 @@ live in [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Pac
 (the Jetson / Pi install step, run options such as `--no-render-thread`, the game's settings) into every installer.
 (Moved 2026-10-27.)
 
+## 5b. A signed Raspberry Pi image: design facts (not built yet)
+
+Facts found while designing a signed Raspberry Pi 4 image for Tron (2026-10-19; the design itself is on the game's
+page). Doc = Raspberry Pi's documentation read that day; inferred = reasoning, not tried.
+
+- **Signing is not secrecy.** A signed image stops a board running a changed image; it hides nothing. A
+  downloadable image can be opened on any PC, so a shared secret (a Scorbit provider key) never goes in it, signed
+  or encrypted: provision it per cabinet onto a writable data partition after flashing (inferred).
+- **"Only official images" needs the board's fuses.** On a stock Pi the SD card can always be reflashed; only a
+  board whose OTP holds the hash of your RSA-2048 key (`program_pubkey`) refuses other boot images. That is
+  permanent, and `revoke_devkey` before the bootloader is signed bricks the board (doc, `usbboot/secure-boot-recovery`).
+  On any other board, the reachable goal is signed updates (RAUC bundles) and a read-only, dm-verity system (inferred).
+- **Pi 4 (BCM2711) vs Pi 5:** on the Pi 4 the boot ROM checks the EEPROM bootloader against Raspberry Pi's key only,
+  and your key checks `boot.img`/`boot.sig` (firmware, kernel, initramfs); the BCM2712 also requires your signature
+  on the EEPROM (doc). Raspberry Pi's `rpi-sb-provisioner` supports CM4, CM4S, CM5 and Pi 5/500, **not the Pi 4
+  Model B**, which is provisioned by hand with `usbboot` and a GPIO set as RPIBOOT (`program_rpiboot_gpio=8`) (doc).
+- **Disk encryption tied to the board:** the provisioner's initramfs derives a LUKS key from a device-unique OTP secret
+  (`rpi-fw-crypto`) (doc). A root shell on the running board can still read the data, so a locked board ships with no
+  login (inferred).
+- **A/B updates:** Raspberry Pi's own `autoboot.txt` with `tryboot` boots the new slot once and falls back (doc);
+  updates are then whole system images, not `git pull`, so every writable file of the game (settings, audits,
+  credentials, logs, the PuP Pack) must live on the data partition.
+- **A public image for anyone to flash (balenaEtcher) cannot be kept unmodified:** before first boot it is files
+  on a card, and a stock Pi boots whatever is there, so any check on the card can be edited out. Reachable: a
+  dm-verity system whose root hash the initramfs checks, the game starting Scorbit only from a verified release,
+  and the adjustments that change scoring held at factory values while Scorbit is on, so scores stay comparable
+  (inferred design, Tron 2026-10-19). A shared key in such an image is one leak from revocation for every cabinet:
+  ask Scorbit for per-release or per-cabinet credentials.
+- **Signing keys stay off CI:** sign `boot.img` and the update bundles on the owner's PC with a hardware token; CI may
+  build the unsigned image. A lost secure boot key means provisioned boards never take a new image.
+- **A PuP Pack on a locked board:** the player downloads the author's zip and hands it over (USB stick, or an upload
+  page on the local network); the game accepts only the zip SHA-256s of the releases its trigger map was checked on
+  (inferred design).
+
 ## 6. Status and open work per game
 
 ## 5c. Prebuilt bundles: the game with nothing left to build
@@ -233,5 +267,5 @@ Checked on a PC only (Tron, 2026-10-24); the arm64 bundle on a real Pi 4 or Jets
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-27 (prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-27 (5b, signed Raspberry Pi image design facts; prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
