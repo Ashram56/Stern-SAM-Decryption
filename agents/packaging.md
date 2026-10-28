@@ -115,6 +115,10 @@ soon as the game repo exists:
 
 1. Copy `scripts/toolchain.py`, `setup.py`, `run.py`, `fsutil.py`, `gmc_patch.py`, `scripts/install/`, the
    wrappers, `docker/`, the CI workflow and `tests/test_install.py` / `test_toolchain.py`.
+   `gmc_patch.py` must also accept the GMC that a platform image provides (MPF-Godot-Packaging, `platform_addons: ["mpf-gmc"]`):
+   it carries the same fixes under the tag `# mpf-godot fix`, so a file with that tag counts as patched (Transformers
+   `PLATFORM_TAGS`, `scripts/gmc_patch.py`); else run.py stops with "unexpected scripts/bcp_server.gd". A bundle without
+   GMC needs a Godot re-import after the platform installs it (Godot's class cache is empty otherwise): the platform loader does it.
 2. Rename, in one block at the top of each installer: the environment prefix, repository URL, default
    branch, install folder name (`~/Tron-Legacy-MPF`), the assets repository (or drop that check when there
    is none), the banner text, the short-path hint (`C:\tron`), the Docker image and service names, the COM
