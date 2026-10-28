@@ -94,6 +94,10 @@ The ball devices count the table's own trough (18-21), shooter lane (23) and VUK
 
 ## 4a. What bit on Transformers (true of any SAM table)
 
+Why the adapter (`vpx_hardware.py`) exists at all, MPF 0.80.1's `virtual_pinball` answering unlike VPinMAME, is
+documented with a draft upstream issue in MPF-Godot-Packaging
+[`fixes/mpf/virtual-pinball-vpinmame-answers.md`](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/fixes/mpf/virtual-pinball-vpinmame-answers.md).
+
 - **`UseVPMModSol = 2`** (physical outputs, common in recent VPW and VR tables): core.vbs then sets
   `Controller.SolMask(2) = 2` and divides solenoids, lamps **and** GI by 255. The bridge must report lamps 0-255
   and GI 0-255 in that mode, and 0/1 lamps and 0-8 GI otherwise; it keeps the `SolMask(2)` the table wrote and
@@ -115,6 +119,9 @@ The ball devices count the table's own trough (18-21), shooter lane (23) and VUK
   switch stays on, MPF retries the eject, and the second ball comes out. `game.balls_in_play` stays right
   (drains are counted in the trough), but the second ball's scoop shot is lost. A real scoop rejects the
   second ball. (code: Tron VPW Mod v1.1 table script; reproduced in Tron `tests/test_ball_tracking.py`)
+  A stack in **saucer mode** does not have the problem: `InitSaucer` (Transformers v2.4 `bsSaucer.InitSaucer sw3, 3, ...`)
+  disables its kicker in `AddBall` while it holds the ball, so a second ball rolls over it as on a real saucer.
+  Grep the script for `InitSw 0, <one switch>` to find the stacks that do. (code: core.vbs `cvpmBallStack.AddBall`)
 - **Stuck balls**: VPX strands balls where a real machine would not. After the ROM's lost ball recovery
   (PINBALL MISSING) serves a replacement, a stuck ball that comes free ends the ball early. That is the ROM's
   behaviour ([playbook](../knowledge/sam_to_mpf_playbook.md), "SAM ball counting"), so ask the owner about it
@@ -145,4 +152,4 @@ starting with the owner's Windows test.
 
 Keep this file current with every generic fix; owner test results go on the game page. Last updated 2026-10-10
 (moved to Stern-SAM-Decryption; Tron status and open items to the Tron game page; Transformers: generic bridge,
-physical outputs, GI, autofire, cloud testing; Tron: scoop ball stacks, stuck balls).
+physical outputs, GI, autofire, cloud testing; Tron: scoop ball stacks, stuck balls; 2026-10-28: saucer mode, pointer to the MPF fix doc).
