@@ -188,6 +188,11 @@ Tron's choices (details in Tron-Legacy-MPF-PuP `docs/pup/README.md` and `docs/je
 
 ## 7. Packaging and keeping up with the game
 
+**Putting the game and its pack on a machine** (any game): the game builds a bundle with the platform's builder and
+declares the pack's install command in `bundle.json` (`pup.install` with `ZIP_PATH_OR_URL`, `pup.pack_dir`); the player
+uploads the bundle, then the author's zip, on the setup web page. See [packaging.md](packaging.md) 5c and
+MPF-Godot-Packaging `platforms/game-bundles.md`.
+
 - **Build the pack into the game repo, not a fork.** Tron's fork (Tron-Legacy-MPF-PuP) diverged by 112 commits
   in five days; every platform fix landed twice and each sync conflicted (14 files at the final merge), so the
   owner merged it back into the game repo (Tron-Legacy-MPF PR #41, 2026-10-10). Transformers built it in the game
