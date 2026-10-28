@@ -237,7 +237,21 @@ A ready-made system image (or any base install that already has MPF, Godot and f
 import, the font bake), not downloads (observed). Everything that computation makes is the same on every machine of a
 GPU family, so a **bundle** ships it built: one archive of the game, its generated config, media and sounds, its baked
 fonts and its Godot import (Tron: `scripts/package/build_bundle.py`, `docs/bundle.md`; 235 MB packed, 633 MB
-unpacked). What a bundle builder must get right:
+unpacked). **The builder is the platform's, not the game's** (since 2026-10-28): MPF-Godot-Packaging
+[`platforms/game-bundles.md`](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/game-bundles.md) is
+the method, and `python -m mpf_godot bundle bundle_spec.json --target all` the tool. A game does only this:
+
+1. Write a **`bundle_spec.json`** at its repository root (example: `examples/bundle/bundle_spec.json` there): which
+   tracked and generated folders to pack, which cabinet files must never be in it, which `.import` files to write
+   again, `platform_addons: ["gde_gozen"]`, and the `run`, `options`, `pup` (`install`, `pack_dir`), `requires.env` and
+   `keep_on_update` entries the setup page reads from `bundle.json`.
+2. Keep **no binary** in the game: GoZen and the other add-ons come from the platform, identical for every game; a
+   **universal bundle** (`--target all`) holds both texture formats, imported offline, and installs on any machine.
+3. Add what is the game's own: a stale-media check before the build, its settings schema and tool, board profiles,
+   its PuP install command. Tron's `scripts/package/build_bundle.py` is only that, around the platform's builder.
+
+The platform's setup web page then installs the bundle (and the PuP Pack zip through `pup.install`) on a machine with
+nothing in it but the platform image. The rules the builder enforces, kept here as the reasons:
 
 - **Texture formats.** Godot's import always writes the variant the *host* prefers (S3TC/BPTC on a PC) whatever
   `import_s3tc_bptc` says, and `import_etc2_astc=true` adds ETC2; ARM GPUs (Pi 4's V3D, Jetson) use ETC2 and a PC
@@ -260,7 +274,7 @@ unpacked). What a bundle builder must get right:
   game under `strace -f -e trace=openat,stat`, not by guessing.
 - **A settings schema** (`options.json`: id, type, range, default, group, where stored) and a small tool that
   validates and writes it lets a web page configure the game without knowing its files; keep secrets write-only.
-- **The PuP Pack stays out** (the author's zip, installed by the game's own step, `pup_setup.py --pup-zip`); its install
+- **The PuP Pack stays out** (the author's zip, installed by the game's own step, `pup_setup.py --pup-zip`, declared in `bundle.json` `pup.install`); its install
   needs ffmpeg with libtheora even when the videos are not converted (Tron's `gen_pup.py` looks for it first).
 
 Checked on a PC only (Tron, 2026-10-24); the arm64 bundle on a real Pi 4 or Jetson is the next test.
