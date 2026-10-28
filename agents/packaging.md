@@ -282,6 +282,11 @@ nothing in it but the platform image. The rules the builder enforces, kept here 
   validates and writes it lets a web page configure the game without knowing its files; keep secrets write-only.
 - **The PuP Pack stays out** (the author's zip, installed by the game's own step, `pup_setup.py --pup-zip`, declared in `bundle.json` `pup.install`); its install
   needs ffmpeg with libtheora even when the videos are not converted (Tron's `gen_pup.py` looks for it first).
+- **The game's PuP step must keep the platform's GoZen.** With `platform_addons: ["gde_gozen"]` the platform puts its GoZen build in
+  `game/addons/gde_gozen`; a `pup_setup.py` that only trusts `pup_addons/gde_gozen` in the game's repository deleted it and converted every video to
+  Theora (256 videos, about an hour, no hardware decoding; Transformers on an Intel N100 mini PC, 2026-10-28). `tools/pup/runtime/scripts/pup_setup.py`
+  now keeps an installed `game/addons/gde_gozen/gozen.gdextension` (`platform_gozen()`). The platform also passes the game its venv under the
+  name the game declares in `requires.env` (a name ending in `VENV`); a game's toolchain should read that name and `MPF_GAME_VENV`.
 
 Checked on a PC only (Tron, 2026-10-24); the arm64 bundle on a real Pi 4 or Jetson is the next test.
 
