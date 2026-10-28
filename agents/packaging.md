@@ -314,3 +314,6 @@ GMC not shipped). All of it shows on any x86 Linux box with no GPU; run it befor
    `SCRIPT ERROR` in `game/logs/godot.log` (Vulkan and ALSA errors are the sandbox).
 4. A bundle detects itself by `bundle.json` (the media are never regenerated, the ROM's frames are not in it); it never
    embeds GMC or GoZen when the platform provides them (`platform_addons`).
+5. Ship every file of the media fingerprint (`toolchain.MEDIA_INPUTS`: Transformers needed `mpf_names.json`, `fonts.json`,
+   `dmd/images.csv` in `bundle_spec.json` `copy`), then check in the unpacked bundle that `game/media/.generated` equals
+   `media_fingerprint()`. A bundle that only skips the check (`bundle.json` present) hides the gap.
