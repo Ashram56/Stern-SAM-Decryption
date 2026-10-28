@@ -261,6 +261,12 @@ nothing in it but the platform image. The rules the builder enforces, kept here 
   missing (code, from the file's format). A PC without Vulkan (OpenGL fallback) cannot show ETC2 and crashes in
   `_get_gl_image_and_format`; with Vulkan Godot logs "ETC2_RGB8 not supported by hardware, converting to RGBA8" and runs
   (observed, lavapipe, whose ETC2 and ASTC are off and BC on).
+- **A universal bundle needs VRAM-compressed textures, and Godot only makes them for textures whose `.import` says
+  `compress/mode=2`.** The default for a new PNG is lossless (`compress/mode=0`): such a game's bundle has no S3TC and
+  no ETC2 variant, and a Pi 4 or Jetson then decompresses on the CPU at load (observed: another game's first bundle).
+  Every game should therefore write VRAM-compressed `.import` files for the pictures its slides load (improvement.md,
+  "When adding media"), except pictures a script reads back; the platform's builder warns when none is compressed and
+  has `force_vram` for tracked `.import` files (MPF-Godot-Packaging `platforms/game-bundles.md`).
 - **`.import` files you generate yourself are not tracked**, so a copy that skips `*.import` silently loses their
   settings: Tron's HD effect frames (VRAM-compressed) came out lossless, 2 765 textures instead of 2 595 + 2 765
   (observed, the first bundle build). Write them again before the import and check the variant counts after it.
