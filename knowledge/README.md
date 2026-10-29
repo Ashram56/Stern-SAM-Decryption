@@ -9,6 +9,7 @@ agent itself: [../agents/rom_extraction.md](../agents/rom_extraction.md).
 | File | Read it when | Size |
 |---|---|---|
 | [sam_to_mpf_playbook.md](sam_to_mpf_playbook.md) | You build or maintain an MPF recreation of **any** Stern SAM game from ROM-derived specs. Architecture, build order, verification loop and every gotcha that cost real time. Game agnostic; Tron is only the worked example. | ~15 min |
+| [mpf.md](mpf.md) | You work on how a game talks to MPF itself: its `virtual_pinball` platform and the VPX bridge, quirks of MPF 0.80.1. Game agnostic. | ~4 min |
 | [dmd_hd_upscaling.md](dmd_hd_upscaling.md) | You work on the optional HD display (128x32 DMD drawn at any window size). Separate from the rules work on purpose. | ~5 min |
 | [sam_hardware/](sam_hardware/README.md) | You need the SAM CPU to IO board bus, its timing, the lamp matrix, or any interface the CPU board drives (DMD, sound, switches, timers): same boards on every SAM game, measured with the Tron ROM. CSVs beside it. | ~15 min |
 | [sam_os_api.json](sam_os_api.json) | You name OS functions in a new ROM's decompile: 160 SAM OS functions with signatures, meaning and evidence (Tron LE 1.74 addresses; find each again with the ROM extraction agent's section 5.1). | grep it |

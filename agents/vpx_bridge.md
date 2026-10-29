@@ -95,8 +95,7 @@ The ball devices count the table's own trough (18-21), shooter lane (23) and VUK
 ## 4a. What bit on Transformers (true of any SAM table)
 
 Why the adapter (`vpx_hardware.py`) exists at all, MPF 0.80.1's `virtual_pinball` answering unlike VPinMAME, is
-documented with a draft upstream issue in MPF-Godot-Packaging
-[`fixes/mpf/virtual-pinball-vpinmame-answers.md`](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/fixes/mpf/virtual-pinball-vpinmame-answers.md).
+documented, with a draft upstream issue, in [`knowledge/mpf.md`](../knowledge/mpf.md), "`virtual_pinball` answers unlike VPinMAME".
 
 - **`UseVPMModSol = 2`** (physical outputs, common in recent VPW and VR tables): core.vbs then sets
   `Controller.SolMask(2) = 2` and divides solenoids, lamps **and** GI by 255. The bridge must report lamps 0-255
