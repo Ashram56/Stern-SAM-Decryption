@@ -95,6 +95,8 @@ Tron-style font turn up.
 
 Mode precedence, first match wins: `--proc-dmd` (classic) → user arg `--dmd=hd|classic` → render
 captures (classic) → env `TRON_DMD` → project setting `tron/dmd/mode` (default `hd`).
+The default is the game's call: Tron ships HD on; a game with no DMD-frame reference captures to verify
+against (e.g. Spider-Man Vault, SMANVE) ships classic and keeps HD one switch away.
 In HD: content scale mode `canvas_items` at 4:1, filtered textures, every sprite showing `media/dmd/X`
 swaps to `media/dmd_hd/X` scaled to the same 128x32 footprint, text drawn from the TTFs.
 Options: text colour (default `#2a6cff`), glow colour (`#22b8ff`) and strength (0.8) via `--dmd-text-*`,
@@ -107,6 +109,11 @@ Plain labels and letter sprites get their glow from a SubViewport + `tools/dmd_g
 - Every font and layer: TrueType and glow advances = ROM advances x scale; outline winding; Godot's own
   layout advances (`tools/font_check.gd`).
 - HD frames exist for every deff; HD text rendered at 1280x320.
+- **No reference captures? Verify by downscaling the HD result to 128x32.** When a game has no DMD-frame
+  captures to hash (e.g. Spider-Man Vault, SMANVE), the visual check is that the HD frame's downscale to
+  the classic grid matches the classic frame dot for dot (Jaccard 1.0 on the lit mask: no dot the classic
+  frame does not have). This catches layout drift and HD-only artifacts without a reference; run the render
+  harness in classic and HD on the same slide (`scripts/render_check.py classic and SMVE_DMD=hd`).
 
 ## Gotchas
 
