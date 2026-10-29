@@ -24,7 +24,7 @@ that game's value as the worked example (an address, a count, a file).
 **Not here**: anything about Godot, GDE GoZen, GMC or MPF Monitor's packaging, or about a platform or board (Windows, macOS, Linux,
 Jetson, Raspberry Pi: video decoders, VideoCore / V4L2, kernel modules, sound, screens, frame rates, the toolchain's
 versions and patches): report it in [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) instead ([its CONTRIBUTING.md](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/CONTRIBUTING.md)); this repository is ROM extraction, MPF and
-re-coding. MPF itself (its behaviour and quirks, its `virtual_pinball` platform, BCP, config) is here: [knowledge/mpf.md](knowledge/mpf.md). Also not here: facts of one game only (its addresses, status, open work, owner decisions, run values: those go
+re-coding. A Godot, GoZen or GMC bug that is in the way MPF or the game calls the tool (a wrong call, a missing argument, a game's own wrapper) is the game's side, not the platform's: here when it holds for every game, else the game's repository. MPF itself (its behaviour and quirks, its `virtual_pinball` platform, BCP, config) is here: [knowledge/mpf.md](knowledge/mpf.md). Also not here: facts of one game only (its addresses, status, open work, owner decisions, run values: those go
 on the game's own page), anything extracted from a ROM (images, sounds, tables, decompiles), the ROM itself,
 private or third-party material (colourisation and its tools stay in a private repo, never named here),
 credentials or hostnames.
