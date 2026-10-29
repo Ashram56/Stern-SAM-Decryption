@@ -16,9 +16,9 @@ scripts, rename, and keep them in step. File paths in `code` are the Tron game r
 "Packaging" here is the game's **install and run kit**. It is not the ROM extraction's MPF asset package
 (`mpf_package/`, agent A's `AGENTS.md` section 10) and not the game itself (agent C).
 
-> **Routing rule (Vincent, 2026-10-27):** anything about Godot, GDE GoZen, GMC, MPF, a platform or a board (video
-> decoders, kernel, sound, screens, frame rates) belongs in MPF-Godot-Packaging, not here. This repository is ROM
-> extraction and re-coding.
+> **Routing rule (Vincent, 2026-10-27):** anything about Godot, GDE GoZen, GMC, a platform or a board (video
+> decoders, kernel, sound, screens, frame rates) belongs in MPF-Godot-Packaging, not here. MPF knowledge
+> (2026-10-29, Vincent) belongs here, in `knowledge/mpf.md`. This repository is ROM extraction, MPF and re-coding.
 >
 > **The game-agnostic kit:** [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) installs
 > MPF, MPF Monitor, Godot and the patched GMC with one line per OS (Jetson included), documents every fix to MPF,

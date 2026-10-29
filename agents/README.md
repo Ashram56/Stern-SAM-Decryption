@@ -140,7 +140,8 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
   a **pull request** when it (or the owner it works for) has write access to Ashram56/Stern-SAM-Decryption, else
   a **GitHub issue** on it, opened directly with no user step. It says in its report which PR or issue it opened.
 - **Route by topic.** This repository is ROM extraction and re-coding (agents A to E's rules and the knowledge about
-  them). Findings about Godot, GDE GoZen, GMC, MPF, a platform or a board (video decoders, VideoCore, kernel, sound,
+  them). Findings about MPF itself (its behaviour, its quirks, its hardware platforms such as `virtual_pinball`, how a table or
+  a game talks to it) stay here, in [knowledge/mpf.md](../knowledge/mpf.md). Findings about Godot, GDE GoZen, GMC, a platform or a board (video decoders, VideoCore, kernel, sound,
   screens, frame rates, installer toolchains) go to [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) (its `fixes/` and
   `platforms/`; its CONTRIBUTING.md), with at most a pointer here. Every sub-agent applies this itself.
 - **Keep these docs current.** When a thread learns something that changes how a later agent would work (a
