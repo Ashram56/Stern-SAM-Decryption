@@ -237,18 +237,30 @@ A ready-made system image (or any base install that already has MPF, Godot and f
 import, the font bake), not downloads (observed). Everything that computation makes is the same on every machine of a
 GPU family, so a **bundle** ships it built: one archive of the game, its generated config, media and sounds, its baked
 fonts and its Godot import (Tron: `scripts/package/build_bundle.py`, `docs/bundle.md`; 235 MB packed, 633 MB
-unpacked). **The builder is the platform's, not the game's** (since 2026-10-28): MPF-Godot-Packaging
-[`platforms/game-bundles.md`](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/game-bundles.md) is
-the method, and `python -m mpf_godot bundle bundle_spec.json --target all` the tool. A game does only this:
+unpacked). **The builder is the platform's, not the game's, and the platform knows no game** (since 2026-10-29, owner rule):
+MPF-Godot-Packaging [`platforms/game-bundles.md`](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/game-bundles.md)
+is the method, `python -m mpf_godot bundle <description> --target all` the tool. It holds **no recipe, spec, file list or name
+of any game**; it takes the **complete game package** that the game's repository (or the session that creates the game) produces
+and describes, checks it, adds the platform add-ons, imports the textures and packs. The contract is in MPF-Godot-Packaging
+`common/games/README.md` ("What the game provides") and `schema/game_package.schema.json`. A game does only this:
 
-1. Write a **`bundle_spec.json`** at its repository root (example: `examples/bundle/bundle_spec.json` there): which
-   tracked and generated folders to pack, which cabinet files must never be in it, which `.import` files to write
-   again, `platform_addons: ["gde_gozen"]`, and the `run`, `options`, `pup` (`install`, `pack_dir`), `requires.env` and
-   `keep_on_update` entries the setup page reads from `bundle.json`.
+1. **Produce a complete package.** Every file needed at run time exists in the repository folder when the build starts,
+   **generated and git-ignored files included** (config, media, sounds, baked fonts, generated slides and data tables). The
+   game's own setup or build step makes them; the platform generates nothing. Transformers' first bundle lacked
+   `game/slides/deffs` and `game/tf/media_data.json` (generated, ignored) and the platform's answer was a game spec in the
+   platform repository, which is the wrong fix: the game lists them in its own description and a test in the game checks they exist.
+2. Write the **description** in the game's repository: `bundle_spec.json` (or `game_package.json`, at the root or in
+   `scripts/package/`; example `examples/bundle/bundle_spec.json` there): which tracked and generated folders to pack
+   (`copy` lists must exist, `optional` for the rest), which cabinet files must never be in it, which `.import` files to write
+   again, `platform_addons: ["gde_gozen", "mpf-gmc"]`, and the `run`, `options`, `pup` (`install`, `pack_dir`), `requires.env`
+   and `keep_on_update` entries the setup page reads from `bundle.json`. The platform validates the keys and refuses a typo.
 2. Keep **no binary** in the game: GoZen and the other add-ons come from the platform, identical for every game; a
    **universal bundle** (`--target all`) holds both texture formats, imported offline, and installs on any machine.
 3. Add what is the game's own: a stale-media check before the build, its settings schema and tool, board profiles,
    its PuP install command. Tron's `scripts/package/build_bundle.py` is only that, around the platform's builder.
+4. **Never put game content in MPF-Godot-Packaging** (its CONTRIBUTING.md and `tests/test_no_game_content.py` enforce it): no
+   recipe, no spec, no game or PuP Pack name outside the provenance of a finding in `fixes/` and `platforms/`. A missing
+   file or add-on is fixed in the game's package, or by a generic check in the platform, never by a game entry there.
 
 The platform's setup web page then installs the bundle (and the PuP Pack zip through `pup.install`) on a machine with
 nothing in it but the platform image. The rules the builder enforces, kept here as the reasons:
@@ -287,5 +299,5 @@ Checked on a PC only (Tron, 2026-10-24); the arm64 bundle on a real Pi 4 or Jets
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-27 (setup.py --scorbit; 5b, signed Raspberry Pi image design facts; prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-29 (the platform holds no game: the game provides a complete package and its description, section 5c; 2026-10-27: setup.py --scorbit; 5b, signed Raspberry Pi image design facts; prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
