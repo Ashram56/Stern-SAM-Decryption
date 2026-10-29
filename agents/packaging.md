@@ -232,6 +232,8 @@ page). Doc = Raspberry Pi's documentation read that day; inferred = reasoning, n
 
 ## 5c. Prebuilt bundles: the game with nothing left to build
 
+**Rule for every game (MPF-Godot-Packaging `platforms/game-bundles.md`, rules 12 and 13):** everything extra made for a game (media derived from a third-party pack, HD art, clips, converted files) is made offline when the bundle is built and ships in that bundle. Nothing is made, converted or pip-installed on the machine that runs the game (it only starts MPF and serves the settings page). Only what the owner downloads untouched from its author (a PuP Pack zip, a ROM) stays apart, and the page only unpacks it. Tron: `build_bundle.py --pup-zip`.
+
 A ready-made system image (or any base install that already has MPF, Godot and ffmpeg) does not want to run
 `setup.py`: on Tron that is 4 to 8 minutes on a 4-core PC, and 85% of it is computation (media generation, the Godot
 import, the font bake), not downloads (observed). Everything that computation makes is the same on every machine of a
