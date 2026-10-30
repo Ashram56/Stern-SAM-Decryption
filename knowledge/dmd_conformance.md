@@ -27,3 +27,18 @@ Tron Legacy LE 1.74 (`trn_174h`), Tron-Legacy-MPF `docs/dmd_conformance.md` and 
 - A ROM that differs from the PinMAME checksum (e.g. a version without music) still runs and gave the same effect trace.
 - The ROM's animated transitions between text screens, the status panel and the boot version screen are where recreations
   differ first: a recreation that shows the final text over a static picture never produces the ROM's in-between frames.
+
+## What fixing it taught (Tron, 2026-10-30)
+
+- **Measure each effect on its own first**: render the effect, identify the ROM's reference capture frame and the recreation's
+  frame with the colouriser, list the frames the ROM's file knows and the recreation's does not. In isolation most of Tron's
+  effects were already right; the weak ones shared one pattern (below). A scenario run only says which effects to look at.
+- **Jackpot-style effects play the clip bare, then the text comes with the effect's last sound call** (the last graphics
+  frame's start + a few ticks), and the picture often drops to a single level under the text (every lit dot at level 1) or maps
+  one level to another. Read the time and the levels off the capture (`timing.json` sounds and graphics frames; a per-level
+  histogram of recreation against capture), not from the clip.
+- **Random film clips**: when the ROM picks one clip of several at random (or by level), keep all of them and pick at run time.
+  A hit-rate that asks for the same colourised frame then under-counts (the two runs pick different clips); watch the share of
+  the recreation's frames that are **unknown** to the colouriser instead.
+- **Bench gotcha**: regenerating the pictures without re-importing them in Godot leaves the effects' pictures blank in the
+  render check (the first result then looks like a regression); always re-import after generating.
