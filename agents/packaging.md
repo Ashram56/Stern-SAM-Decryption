@@ -177,6 +177,20 @@ soon as the game repo exists:
   it. (verified 2026-10-10 with pwsh 7.4 on Linux)
 - **CI runs only on pushes to `main`**: test the installers locally in dry-run mode; on Windows only the
   owner can run them for real.
+- **A game whose tests need untracked reference artifacts skips them on a fresh checkout**: on a strict
+  recreation the ROM-fidelity suite reads an untracked ROM-derived corpus (`rules/traces` + the compare
+  harness) that only the operator workspace has. Mark it `@skipUnless(_corpus_present())` so a fresh clone
+  (and CI) runs the unit suite + the checks that can run and stays green, while the operator workspace runs
+  the full suite unchanged. The build-time tables a fresh checkout hard-fails without -- setup.py's
+  generator abort and the unit tests of the always-on paths -- must be committed; everything else can stay
+  a decoder output. (observed, Spider-Man Vault F6, 2026-10-30)
+- **Test the front README against the scripts.** The definition of done (section 3) says the README shows
+  the one line per platform, every option, and stays in sync with any installer or `run.py` option. A cheap
+  end-to-end guard: a `tests/test_install_matrix.py` that dry-runs every installer in `--dry-run` mode,
+  asserts each documented option combination maps to the right `setup.py` flags and run command, and asserts
+  the README's one lines point at the real raw URLs (they are what `irm`/`curl` actually fetch) and its
+  Settings list names only options the scripts accept. A later change to an option, a one line or the README
+  then cannot silently drift from the others. (observed, Spider-Man Vault F7, 2026-10-30)
 - **Pasting a token on Windows**: in the PowerShell / cmd console, paste with a right-click; Ctrl+V did nothing at
   the installer's token prompt (observed, Tron owner test on Windows). Say so next to the prompt in the README.
 - **Release tags from a cloud session**: the session's git proxy refuses tag pushes (403), so the owner creates
@@ -301,5 +315,5 @@ Checked on a PC only (Tron, 2026-10-24); the arm64 bundle on a real Pi 4 or Jets
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-29 (the platform holds no game: the game provides a complete package and its description, section 5c; 2026-10-27: setup.py --scorbit; 5b, signed Raspberry Pi image design facts; prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-10-30 (the fresh-checkout test-skip and the README-vs-scripts matrix guard; 2026-10-29: the platform holds no game: the game provides a complete package and its description, section 5c; 2026-10-27: setup.py --scorbit; 5b, signed Raspberry Pi image design facts; prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
