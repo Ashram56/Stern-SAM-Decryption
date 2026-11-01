@@ -42,3 +42,11 @@ Tron Legacy LE 1.74 (`trn_174h`), Tron-Legacy-MPF `docs/dmd_conformance.md` and 
   the recreation's frames that are **unknown** to the colouriser instead.
 - **Bench gotcha**: regenerating the pictures without re-importing them in Godot leaves the effects' pictures blank in the
   render check (the first result then looks like a regression); always re-import after generating.
+- **Take the font spacing and every glyph's x offset from the ROM's font table, never from rules tuned on captures** (Tron,
+  2026-11-01). Tron's font generator had a rule "the comma is drawn one dot left in the plain fonts", found on two captures.
+  The ROM's table says the outlined fonts do the same, and it gives two other fonts' spacing. A value "3,000,000" in an
+  outlined font then sat one dot wide, and its black outline erased one column of the picture under it: 1 of 74 frames of
+  the effect matched. With the table's values, 74 of 74 matched. A one-dot text error shows as a picture error when the font
+  is outlined.
+- **Bench gotcha (2)**: when the scenario's capture goes to a per-effect folder, copy it to the folder the scoring script
+  reads before scoring, or the score is the old run's.
