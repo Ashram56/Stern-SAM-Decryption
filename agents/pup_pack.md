@@ -193,6 +193,12 @@ declares the pack's install command in `bundle.json` (`pup.install` with `ZIP_PA
 uploads the bundle, then the author's zip, on the setup web page. See [packaging.md](packaging.md) 5c and
 MPF-Godot-Packaging `platforms/game-bundles.md`.
 
+In a bundle the machine only **unpacks** the author's zip (`pup.extract_only`); whatever the game derives from the pack
+(manifest, music, pictures) is made on the builder from `--pup-zip` and ships in the bundle (platform rules 12 and 13), and the
+mp4s stay as they are (the platform's GoZen plays them). So the runtime's `pup_setup.py` must keep a GoZen that is already in
+`game/addons/gde_gozen` (`platform_gozen()`) instead of removing it or needing `pup_addons/`. Transformers: `scripts/package/build_bundle.py`
+(media at build), `pup_install.py` (unpack only).
+
 - **Build the pack into the game repo, not a fork.** Tron's fork (Tron-Legacy-MPF-PuP) diverged by 112 commits
   in five days; every platform fix landed twice and each sync conflicted (14 files at the final merge), so the
   owner merged it back into the game repo (Tron-Legacy-MPF PR #41, 2026-10-10). Transformers built it in the game
