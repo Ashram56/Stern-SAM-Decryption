@@ -23,6 +23,9 @@ decisions, departures from the ROM, player docs). For Tron: the
 [Tron game page](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), which also lists
 where the Tron instance lives.
 
+[stern_pre_sam_rom_sets.md](stern_pre_sam_rom_sets.md): what a non-SAM Stern set (Lord of the Rings, 6809 + ARM
+bios, 8 files) looks like and why the SAM tools do not apply as is.
+
 ## Token rules for an agent taking over a game
 
 1. Read this README, then one doc above. Do not read the whole game repo: every doc names the exact file to open.
