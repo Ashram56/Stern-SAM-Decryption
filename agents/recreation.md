@@ -158,8 +158,37 @@ Each line has the Transformers value as the example.
 - Do not give a feature an attribute and a method of the same name: Python replaces the method silently and
   the hook dies with "int is not callable" deep in a scenario.
 
-## 6. Status and open work per game
+## 6. A board other than SAM (from Lord of the Rings, Stern Whitestar 6809, 2026-11-21)
+
+What changed when C ran on a 6809 Whitestar game (Lord-of-the-rings-Decryption, `game/`), with no SAM OS to copy.
+Each line has the LOTR value as the example.
+
+- **Two switch numberings meet**: the emulator and the VPX table number switches by the 0-based position in the
+  ROM's name table (`Controller.Switch(28)` = BALROG HIT), A's scenarios by matrix number 10*column+row (45). Number
+  MPF switches as the VPX does and convert A's scenario numbers in the runner; write the rule once
+  (`lotr/hw.py`). Before believing a "the names are shifted" note, check the conversion (on LOTR the names were right).
+- **No decompiled OS yet: rebuild the rules from the traces.** With only A's raw scenario traces, compare **per mark
+  window** (score total, DMD objects in order of first appearance, coils), not event by event: the ROM credits awards
+  up to 0.5-6 s after the switch and logs the switch up to 30 ms after scoring it, so open each window 0.1 s early
+  (`game/scripts/trace_check.py`). Replay A's scenario files with A's own time base (start at 30 s, commands from
+  40 s, hits 1 s apart) so both traces share the clock; prefer the latest `_runN` of a scenario.
+- **The display is objects with parameters, not deffs**: the game CPU sends `9B <id> <params>` and the DMD CPU draws.
+  A mode's running display is re-sent by the game: every 0.115 s while its value counts down, once after each
+  foreground object when static, and a foreground object holds the display ~2.35 s (observed on LOTR). Model it as
+  background providers ranked by priority, re-sent when the display is free (`LotrOS._bg_tick`).
+- **Read awards off the first switch of every trace.** A one-off award on the first switch of a ball showed in every
+  trace (LOTR: +100,000 when it is a scoop) and explained most single-window score gaps once removed from the shot values.
+- **Let the rules kick the scoops**: `auto_fire_on_unexpected_ball: false` on VUKs, saucers and locks, and the OS
+  layer ejects them after the ROM's hold time (from the coil time in the trace), so intros can hold the ball.
+- **Ball search timing feeds the mode timers**: measure "last switch -> search display" in every trace (LOTR 20-26 s,
+  not the 8 s first guessed) and let a held ball postpone it.
+- **Media before fonts**: A's per-object GIF captures (frames with their timing) give a playable DMD at once; the live
+  values wait for the fonts and the x/y of each text, logged as a departure until then.
+- Godot imports every CSV it finds as a translation, in MPF folders too (`monitor/`): `.gdignore` in every non-Godot
+  folder of the machine folder.
+
+## 7. Status and open work per game
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation"; Transformers: [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `README.md`).
 
-Last updated 2026-10-10 (section 5: what porting Transformers Pro 1.80 showed).
+Last updated 2026-11-21 (section 6: a Whitestar 6809 game, Lord of the Rings).
