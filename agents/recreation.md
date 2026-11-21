@@ -126,6 +126,10 @@ Each line has the Transformers value as the example.
   (LOTR: the first ring mode left to `random` swung one scenario's DMD matches between 2 and 3). When a rule's
   random draws cannot be recovered from the trace (LOTR's ring type refill, fix 0xEE95), build the code's rule for
   play and let the replay use a fixed, observed model behind a module flag; say so in rom_differences.md.
+- **Check a spec's condition polarity before coding it.** A condition read from a disassembled table can come out
+  inverted: LOTR's Palantir award 3 (ball saver, 58:5342) was specced "no multiball", but the branch after the
+  multiball test is `bcc` to the failure, so it needs one; the trace (a single ball gave award 8) settled it. When a
+  table of conditions is first-match, run the trace's case through it by hand and confirm the award it shows.
 - **Read the gate, not its name.** A decompile name can say the opposite of the code: `any_timed_mode_running`
   [0x01006704] tests the six multiball flags; the timed modes are [0x010067bc]. Ask A for the flag list behind
   every "multiball / timed mode" condition and check it against a trace where only one of them runs.
