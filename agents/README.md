@@ -155,6 +155,8 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
 - **Strict first, improvements second.** C reproduces the ROM; anything that differs is E's, is switchable,
   and gets a row in the game repo's `docs/rom_differences.md`.
 - **Label facts**: observed (emulator or machine), code (decompile/table, with the ROM address), inferred.
+- **Decompile first** (owner directive): every rule an agent writes or answers cites its routine in the Ghidra
+  decompile; traces and guides only confirm it. Trace-only facts stay "code open" until cited.
 - **Machine-readable first**: tables (CSV/JSON) that code reads, prose second.
 - **Never commit the ROM**, and never name or describe third-party colourisation or media work in a public
   repo beyond a pointer to the private repo.

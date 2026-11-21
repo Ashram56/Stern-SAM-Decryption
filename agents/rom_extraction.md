@@ -7,6 +7,14 @@
 > platform or a board (decoders, kernel, sound, screens, frame rates, installers' toolchain) goes to
 > [Ashram56/MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging) instead (its CONTRIBUTING.md), with at most a pointer here.
 
+> **The decompile comes first (owner directive, 2026-11-21).** For every rule, value or timing you write,
+> find the routine in the Ghidra decompile (or the labelled listing of the same address) and cite it
+> (`bank:addr`, function name). Emulator traces, manuals and guides **confirm** what the code says and give
+> timings; they do not replace it. A fact seen only in a trace is tagged "observed, code open" and stays on
+> the open list until its routine is cited. Answering the recreation agent from a trace alone is how wrong
+> rules spread: on Terminator 2 a tilt "settling time" and a skipped first START both came from emulator
+> artefacts that the code (a 14-tick debounce task; a release check) explained at once.
+
 This file is for an agent (or a person) who has to take a **Stern SAM** game ROM apart: extract the
 sounds, DMD animations and light shows, map switches to callouts, recover the full rules, and package it
 all for a rebuild in MPF (Mission Pinball Framework) or another engine.
