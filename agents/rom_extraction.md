@@ -142,6 +142,10 @@ the same day).
 
 ## 1. Identify the ROM
 
+**Not a SAM game?** A 6809 board (Williams WPC, Whitestar) follows the same steps with other tools and
+conventions: read [../knowledge/wpc_6809.md](../knowledge/wpc_6809.md) first (banking, far calls, inline-argument
+wrappers, the OS registry, emulator gotchas).
+
 - Hash the file (SHA1) and match it against PinMAME's `src/wpc/sams.c` / `sam.c` game list to get the
   set name, game and code version. Tron: 33,110,916 bytes, SHA1
   `40e36764af332175f653e8ddc2a8bb77891c1230` = `trn_174h`, Tron Legacy LE 1.74.
@@ -273,6 +277,9 @@ World Poker Tour to The Walking Dead):
   Section 6 only met 24 and 12 kHz on Tron; expect 8 kHz speech on other titles.
 - Samples tile the sound area end to end and never cross an 8 MB bank.
 - 2006-08 titles and Batman: The Dark Knight have pictures but no animation frames.
+
+**Early WPC (6809)**: not usable for graphics (observed on Terminator 2 L-8: noise for most pictures, no fonts)
+and no pre-DCS sound; see [../knowledge/wpc_6809.md](../knowledge/wpc_6809.md).
 
 **What it does not give**: sound *calls* and their sample pools, display effects (deffs), lamp effects,
 text layout, rules, IO tables, coil data. It is an asset extractor; sections 4 to 9 are still this agent's
