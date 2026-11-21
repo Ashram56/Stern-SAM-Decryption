@@ -207,6 +207,16 @@ soon as the game repo exists:
 - **Bundles and the PuP**: a format 2 bundle of a PuP game builds and boots (T2: 11 MB, `mpf_godot local install`,
   attract), but the PuP runtime (`tools/pup/runtime`, @ fb238ad) does not read the platform's `MPF_PUP_PACK` and wants
   `pup_media/manifest.json`, so such a bundle plays without the pack until the runtime does (open).
+- **Third-party sound packs and the sound source as setup options**: a PinSound pack (or any media pack) is never
+  committed; `setup.py --pinsound-zip ZIP` extracts the folder holding `config.pinsound` (at any depth, path
+  traversal refused, once per zip by a sha256 stamp) into a git-ignored folder, and `--music` / `--effects` write the
+  cabinet's git-ignored `sound.local.cfg`, keeping its other keys. Giving a pack turns its effects on; the music
+  changes only when asked (T2, 2026-11-21: Averell's pack, 463 files, 51 sound commands loaded).
+- **The VPX option in one step (`-Vpx -Table`)**: the COM server's registration and pywin32's post-install need
+  Administrator. Rather than asking the player for a second, elevated shell, `setup.py` relaunches itself with a hidden
+  `--vpx-register` through `Start-Process -Verb RunAs -Wait -PassThru` (one UAC prompt, exit code kept) and, elevated,
+  uses `sys.executable`, not the environment (an elevated process may not inherit it). Then the table's `.vbs` is
+  written unelevated. Not run on Windows yet (T2, 2026-11-21).
 
 ## 5a. Jetson and 5d. Raspberry Pi 4: moved to MPF-Godot-Packaging
 
