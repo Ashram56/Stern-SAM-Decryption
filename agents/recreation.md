@@ -200,6 +200,21 @@ What the first Williams WPC game showed (Terminator 2 L-8, in its private game r
   this, not a rule.
 - **Settle times come from the traces when the code reading disagrees.** T2 tilt: the code read 14 ticks, but a
   second closure 2.15 s after a warning was ignored and 3.76 s counted; the traces win, the gap goes to A.
+- **Graphic glyph sets are font records of height 0.** WPC's font table also holds picture sets (T2: 8 records,
+  letters N, O and `\` to `a`). Each glyph carries its own frame: `00, dy, dx, height, width`, then the rows as in
+  the letter fonts (least significant bit leftmost), drawn with the left edge at x + dx and the bottom row at
+  y + dy (fix:d57f on T2). Rows can be wider than 64 px: keep them as bytes, not as one integer (an int64
+  overflowed in Godot). With them, an animated screen such as the match can be drawn live from its draw routine,
+  pixel-exact against the capture, instead of replaying frames that show the captured values.
+- **The coin and launch buttons may be on the gun.** On T2 the grip trigger (34) launches the ball from the
+  shooter lane with coil 9 (31:5d0a); there is no manual plunger. A launch by the player counts as a plunge (ball
+  save, plunge sound); a coil 9 launch by the ROM (multiball, ball search) does not.
+- **Match a replacement sound pack's speech without speech recognition.** When no ASR model is reachable, align
+  each ROM speech sample with each of the pack's voice lines (MFCC, 19 coefficients normalised per sample, DTW
+  with cosine distance, the mean cost along the path) and keep a match only when the best line is clearly ahead
+  (T2: cost at most 0.62 and 0.04 ahead of the next line: 24 of 82 speech calls, every one plausible against the
+  code; known lines checked first). Two ROM calls on one line: keep the better match, the other falls back to
+  the code's context.
 - **The PuP Pack's lamp and solenoid terms are direct on WPC**: PinMAME's `L<n>` is the lamp matrix number 11-88
   and `S<n>` the solenoid, so the game posts `<game>_lamp_<n>` when a rule lights a lamp (not on the ball start
   redraw) and `<game>_coil_<n>` on a pulse ([pup_pack.md](pup_pack.md)).
