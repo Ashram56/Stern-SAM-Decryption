@@ -209,6 +209,14 @@ What the first Williams WPC game showed (Terminator 2 L-8, in its private game r
 - **The coin and launch buttons may be on the gun.** On T2 the grip trigger (34) launches the ball from the
   shooter lane with coil 9 (31:5d0a); there is no manual plunger. A launch by the player counts as a plunge (ball
   save, plunge sound); a coil 9 launch by the ROM (multiball, ball search) does not.
+- **Map a PinSound pack to ROM sound commands by name, from an altsound template.** An altsound pack's
+  `altsound.csv` lists each sound board command (ID `0x00xx`, `0x7Axx` for the second page) with the PinSound
+  name of its sound (NAME) and a group (1 music, 2 sfx, 3 voice, 4 jingle, 5 single = the PinSound sub-folders).
+  PinSound folders are `<number>-<name>`: join on the name inside the group's sub-folder (the "sorter" method of
+  necro-nemesis/Altsound-converter). Where several folders share a name, pick the one closest in audio to the
+  altsound's own file. On T2 this mapped all 195 commands and agreed with every audio fingerprint and 23 of 24
+  speech alignments, while half of the guesses from game context were wrong (music numbers above all). Prefer it
+  to context. An altsound pack can also be played directly: its csv is the map.
 - **Match a replacement sound pack's speech without speech recognition.** When no ASR model is reachable, align
   each ROM speech sample with each of the pack's voice lines (MFCC, 19 coefficients normalised per sample, DTW
   with cosine distance, the mean cost along the path) and keep a match only when the best line is clearly ahead
