@@ -121,6 +121,11 @@ Each line has the Transformers value as the example.
   random picks come from watched variables, or, when none is traced, from the scores and audits they cause
   (Transformers: mode-start relight picks from the mode-start score caller and shot audits). Ignore values that
   are uninitialised RAM (0xffff before the game starts).
+- **Pin every random pick in the trace replays, or the floor is noise.** A pick the reference never shows (no
+  mode started) still needs a fixed value in the runner; otherwise the regression floor moves from run to run
+  (LOTR: the first ring mode left to `random` swung one scenario's DMD matches between 2 and 3). When a rule's
+  random draws cannot be recovered from the trace (LOTR's ring type refill, fix 0xEE95), build the code's rule for
+  play and let the replay use a fixed, observed model behind a module flag; say so in rom_differences.md.
 - **Read the gate, not its name.** A decompile name can say the opposite of the code: `any_timed_mode_running`
   [0x01006704] tests the six multiball flags; the timed modes are [0x010067bc]. Ask A for the flag list behind
   every "multiball / timed mode" condition and check it against a trace where only one of them runs.
