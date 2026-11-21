@@ -158,8 +158,54 @@ Each line has the Transformers value as the example.
 - Do not give a feature an attribute and a method of the same name: Python replaces the method silently and
   the hook dies with "int is not callable" deep in a scenario.
 
+## 5b. A WPC 6809 game (from Terminator 2 L-8)
+
+What the first Williams WPC game showed (Terminator 2 L-8, in its private game repository, 2026-11-21). The OS facts are in
+[knowledge/wpc_6809.md](../knowledge/wpc_6809.md) where present; these are the build lessons. T2 values as examples.
+
+- **Compare window by window, not event by event.** The trace check cuts the reference and the rebuild at the
+  scenario's marks and compares per window the score delta (from the marks' player score), the set of sound
+  commands, lamp effects, display effects and coils. Sets survive the 10-50 ms jitter of an emulator; keep a
+  per-scenario floor (`tests/trace_floor.json`) that only goes up. T2: 192 windows, 182 scores matching.
+- **Replay the reference's random outcomes.** Jets and slings pick a random score and sound; the runner reads
+  each hit's `score_idx` and sound from the reference and hands them to the rule in order, so the windows compare.
+  Strict play keeps the ROM's random draw.
+- **The emulator has phantom switches.** PinMAME's ball simulation closes switches the host never logged (T2: 72
+  TARGET 2 about 0.73 s after every plunger pulse; a "10,000 + leff 2e" after each multiball launch looked like a
+  rule for a day). When a score has no switch behind it, ask A to log the simulator's switch changes
+  (`sim_switch` in t2_ref12) and replay them; never build them into the rules. Replay by pulse, not by clock:
+  for the k-th coil pulse of the reference, close the same switches at the same delays after the rebuild's k-th
+  pulse, and skip the pulses the player caused (a gun shot: the rule scores its own target). Only playfield
+  switches: the simulator also logs trough, gun motor and drop target resets the rebuild models itself.
+- **A screen that shows up in odd places may be an award you have not built.** T2's deff 14 + leff 36 + coil 7
+  was put in a lock rule, then appeared in the bonus count: it was the replay (knocker), the score crossing
+  REPLAY AT. Before coding an effect into a rule, check whether the score crossed a threshold (replay, extra
+  ball, high score) in that window.
+- **Host key presses can be lost by the emulator.** PinMAME's keyboard handling releases host-set flipper and
+  START switches about 20 ms later; whole high score entries stalled in the reference. Ask A to press PinMAME's
+  own keys for button scenarios (T2: `ex_hsk`, `ex_hs2k`) and treat the lossy runs as non-references.
+- **Line up power-on.** The reference starts at power-on (T2: attract 3.11 s, `ready` 8.0 s); let the rebuild
+  boot the same distance before `ready` and re-stamp the events already logged, or the power-on sequence lands
+  in the first scenario window.
+- **Keep generated runtime data out of MPF's `data/` folder.** That folder holds machine variables and audits per
+  cabinet; packagers refuse it. Put generated tables (lamp effects replayed from traces, fonts) with the media.
+- **Time the end of ball from the outhole switch.** MPF ends the ball about 0.5 s after the drain switch (device
+  confirm); the ROM's bonus count, ball start and game over are timed from the drain. Record the drain time on
+  the outhole switch and shift the end-of-ball timeline back by the difference.
+- **Rules hold balls by claiming them.** A ball that enters a device no rule claims is ejected by MPF at once; the
+  rules answer the relay event `balldevice_<device>_ball_enter` with `unclaimed_balls: 0` and kick it themselves
+  (MPF detail: MPF-Godot-Packaging). With `entrance_count_delay` at 200 ms the rule reacts at the ROM's time.
+- **Speech is dropped, not queued.** The WPC sound board drops a speech call while a higher one speaks (T2: speech
+  0.43 s after a hurry up call-out dropped, 0.93 s after played). A missing speech in the reference is often
+  this, not a rule.
+- **Settle times come from the traces when the code reading disagrees.** T2 tilt: the code read 14 ticks, but a
+  second closure 2.15 s after a warning was ignored and 3.76 s counted; the traces win, the gap goes to A.
+- **The PuP Pack's lamp and solenoid terms are direct on WPC**: PinMAME's `L<n>` is the lamp matrix number 11-88
+  and `S<n>` the solenoid, so the game posts `<game>_lamp_<n>` when a rule lights a lamp (not on the ball start
+  redraw) and `<game>_coil_<n>` on a pulse ([pup_pack.md](pup_pack.md)).
+
 ## 6. Status and open work per game
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation"; Transformers: [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `README.md`).
 
-Last updated 2026-10-10 (section 5: what porting Transformers Pro 1.80 showed).
+Last updated 2026-11-21 (section 5b: the first WPC 6809 game, Terminator 2, with phantom replay, award and key-loss lessons; before: section 5, what porting Transformers Pro 1.80 showed).
