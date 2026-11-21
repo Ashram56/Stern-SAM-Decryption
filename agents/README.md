@@ -155,6 +155,8 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
 - **Strict first, improvements second.** C reproduces the ROM; anything that differs is E's, is switchable,
   and gets a row in the game repo's `docs/rom_differences.md`.
 - **Label facts**: observed (emulator or machine), code (decompile/table, with the ROM address), inferred.
+- **Decompile first** (owner directive): every rule an agent writes or answers cites its routine in the Ghidra
+  decompile; traces and guides only confirm it. Trace-only facts stay "code open" until cited.
 - **Machine-readable first**: tables (CSV/JSON) that code reads, prose second.
 - **Never commit the ROM**, and never name or describe third-party colourisation or media work in a public
   repo beyond a pointer to the private repo.
@@ -169,6 +171,7 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
 | Game | Asset repo (A) | Game repo (C, D, E, F) | Game page |
 |---|---|---|---|
 | Tron Legacy LE 1.74 / Pro 1.74 (worked example) | [Tron-Legacy-LE-ROM-Decryption](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption) | [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) | [docs/agents/README.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md) |
+| Terminator 2 L-8 (Williams WPC, 6809; see knowledge/wpc_6809.md) | Terminator-2-Decryption (private) | not started | `CLAUDE.md` and `README.md` there |
 | Transformers Pro 1.80 | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `rom/` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) | `CLAUDE.md` and `README.md` there |
 
 Add a row when a new game starts. Last updated 2026-10-10 (agent G, PuP Pack; contribution rule: CONTRIBUTING.md; moved here from Tron-Legacy-MPF with the knowledge

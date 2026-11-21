@@ -21,6 +21,11 @@ g++ -O2 -std=c++17 -Ipinmame/src/libpinmame tron_ref.cpp -Lpinmame/build -lpinma
 mkdir -p ~/.pinmame/roms && (cd /tmp && cp /path/to/trn_174h.bin . && zip ~/.pinmame/roms/trn_174h.zip trn_174h.bin)
 ```
 
+For a **6809 game** (Williams WPC, Whitestar) apply `pinmame_m6809_hook.patch` instead (from this folder):
+`PinmameSetM6809Hook`, `PinmameM6809GetReg/SetReg`, `PinmameM6809Read8/Write8`, `PinmameWpcRam`,
+`PinmameWpcRomBank`, `PinmameSetWpcWriteHook` (return 1 to drop a write) and `PinmameEmuTime`; the make
+target is `pinmame_shared`. See [../../../knowledge/wpc_6809.md](../../../knowledge/wpc_6809.md).
+
 Run: `PINMAME_NOJIT=1 ./tron_ref scenario.txt out.jsonl [watch.tsv]`. `PINMAME_NOJIT=1` is required
 (the hook needs the interpreter). `TRON_ROMS=/dir` overrides the ROM folder. Speed is about real time.
 

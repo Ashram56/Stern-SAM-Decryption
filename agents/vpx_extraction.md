@@ -155,6 +155,14 @@ that the patterns it uses are the ones `vpx_map.py` reads (comments are stripped
 | Flashers | `SolModCallback(n)` / `SolCallback(n)` = `"vpmFlasher obj,"` (or `Array(...)`) | solenoid n → obj |
 | Flupper domes | `SolModCallback(n) = "<sub>"`, the sub calls `ModFlashFlasher k` / `FlashFlasher k` | solenoid n → `Flasherlight<k>` (else `Flasherflash<k>`, `Flasherbase<k>`) |
 
+| Lamps (`UseLamps=0` tables) | a timer reads `Controller.ChangedLamps` and does `Select Case` with `Case n : obj.State = lum` (or `obj.Image =`) | each `Case n` block's objects; main object `l<n>` |
+| Flashers (`Select Case` sub) | `SolModCallback(n) = "UpdateFlasher n,"`, that sub's `Case n` block sets `obj.State` | solenoid n → objects |
+| Ball stack entry | `.InitSw a, ...` and `Sub Drain_Hit: bsTrough.AddBall Me` | the entry switch a at that object (the outhole) |
+| Single drop target | `.InitDrop Array(sw77), 77` | obj → n |
+
+WPC configs number every device with its kind (`S11`, `SD1`, `L11`, `C17`): `--names` drops the letter and
+reads `SD<n>` as `D<n>`. A cvpmMech's `.AddSw n` switches (T2's gun home and mark) have no object: `--mech`.
+
 Not handled yet (add them when a table uses them): `SolCallback(n)` objects for coils,
 `Controller.Switch(n)` set from a sub named after another object or from a timer (Transformers' Optimus ramp
 43/44: use `--mech`), GI strings (`GiCallback`; usually leave out). Script comments next to `SolModCallback`
@@ -200,6 +208,15 @@ button on the right on Transformers, and the owner flagged it); some **lamp obje
 Paths, counts, the playfield image name and size, the missing lamp numbers, which `--mech` placements you
 made, what went on the cabinet strip, and the overlay verdict. List what needs the owner's eye as a short numbered list.
 
+### Checking a run (Terminator 2 L-8, WPC)
+
+Verified 2026-11-21 on `Terminator 2 (Williams 1991) g5k 1.25.vpx` (owner's private T2 repo, `vpx/`), names
+from the ROM extraction's `mpf/config/config.yaml`, `--mech 32:T2_Gun,33:T2_Gun --cabinet --device-size 0.035`:
+bounds 0, 0, 964, 2162; playfield `pf_gi_off` 1792x4096; 736 items; script 3,341 lines; 60 switches (43 on the
+playfield, 17 on the cabinet strip including D1-D8), 63 lamps (all the ROM uses), 11 flashers (17-27). The
+"lamp numbers with no object" line lists 1-10, 19, 20 ... on a WPC game: those numbers do not exist (lamps
+are 11-88). A topper lamp (T2's 52, a primitive at 0, 0) lands in the top-left corner.
+
 ## History
 
 - 2026-10-01: first written blind in a cloud session, debugged on the owner's PC by Remote Control
@@ -224,4 +241,7 @@ made, what went on the cabinet strip, and the overlay verdict. List what needs t
 
 - 2026-10-11: `--device-size` (bigger markers, none overlapping) after the Transformers owner asked for bigger icons.
 
-Last updated 2026-10-18 (light colours in `lights_all.csv`).
+- 2026-11-21: first WPC table (Terminator 2): `ChangedLamps` Select Case lamps, `UpdateFlasher n,` flashers, trough
+  entry at its `AddBall` object, single `InitDrop`, WPC `S/L/C` number prefixes in `--names`.
+
+Last updated 2026-11-21 (WPC tables, Terminator 2).
