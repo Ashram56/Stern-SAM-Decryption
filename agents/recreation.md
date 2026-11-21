@@ -184,6 +184,15 @@ Each line has the LOTR value as the example.
   not the 8 s first guessed) and let a held ball postpone it.
 - **Media before fonts**: A's per-object GIF captures (frames with their timing) give a playable DMD at once; the live
   values wait for the fonts and the x/y of each text, logged as a departure until then.
+- **Read each mode's shots from the per-shot hook chains, not the rule sheet.** Every shot handler calls a fixed
+  list of far hooks, one per feature; the hooks that fall in a mode's handler range (from the mode table) are the
+  shots that mode uses, and a mode with one hook has one shot (LOTR: War of the Ents has only an eject hook, the
+  rule sheet's orbit values do not exist in 5.0 code; map in the game's `docs/rules/README.md`). Find the chains by
+  searching the ROM for far calls (`jsr far; addr; bank`) to the mode's addresses.
+- **Effect ids carry the DMD object.** Mode code rarely sends DMD or sound commands itself: it queues an effect id
+  whose table entry starts with the DMD object (LOTR: 61:75FE, 5 bytes: object, priority, flags, script). Reading the
+  first byte gives every mode display at once; the sounds then come from the traces by DMD object. A value passed
+  to that queue is not a sound command: check it against the traces before playing it.
 - Godot imports every CSV it finds as a translation, in MPF folders too (`monitor/`): `.gdignore` in every non-Godot
   folder of the machine folder.
 
@@ -191,4 +200,4 @@ Each line has the LOTR value as the example.
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation"; Transformers: [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `README.md`).
 
-Last updated 2026-11-21 (section 6: a Whitestar 6809 game, Lord of the Rings).
+Last updated 2026-11-21 (section 6: a Whitestar 6809 game, Lord of the Rings; mode shots from hook chains, effect ids).
