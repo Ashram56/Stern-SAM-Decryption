@@ -173,7 +173,22 @@ What the first Williams WPC game showed (Terminator 2 L-8, in its private game r
 - **The emulator has phantom switches.** PinMAME's ball simulation closes switches the host never logged (T2: 72
   TARGET 2 about 0.73 s after every plunger pulse; a "10,000 + leff 2e" after each multiball launch looked like a
   rule for a day). When a score has no switch behind it, ask A to log the simulator's switch changes
-  (`sim_switch` in t2_ref12) and replay them; never build them into the rules.
+  (`sim_switch` in t2_ref12) and replay them; never build them into the rules. Replay by pulse, not by clock:
+  for the k-th coil pulse of the reference, close the same switches at the same delays after the rebuild's k-th
+  pulse, and skip the pulses the player caused (a gun shot: the rule scores its own target). Only playfield
+  switches: the simulator also logs trough, gun motor and drop target resets the rebuild models itself.
+- **A screen that shows up in odd places may be an award you have not built.** T2's deff 14 + leff 36 + coil 7
+  was put in a lock rule, then appeared in the bonus count: it was the replay (knocker), the score crossing
+  REPLAY AT. Before coding an effect into a rule, check whether the score crossed a threshold (replay, extra
+  ball, high score) in that window.
+- **Host key presses can be lost by the emulator.** PinMAME's keyboard handling releases host-set flipper and
+  START switches about 20 ms later; whole high score entries stalled in the reference. Ask A to press PinMAME's
+  own keys for button scenarios (T2: `ex_hsk`, `ex_hs2k`) and treat the lossy runs as non-references.
+- **Line up power-on.** The reference starts at power-on (T2: attract 3.11 s, `ready` 8.0 s); let the rebuild
+  boot the same distance before `ready` and re-stamp the events already logged, or the power-on sequence lands
+  in the first scenario window.
+- **Keep generated runtime data out of MPF's `data/` folder.** That folder holds machine variables and audits per
+  cabinet; packagers refuse it. Put generated tables (lamp effects replayed from traces, fonts) with the media.
 - **Time the end of ball from the outhole switch.** MPF ends the ball about 0.5 s after the drain switch (device
   confirm); the ROM's bonus count, ball start and game over are timed from the drain. Record the drain time on
   the outhole switch and shift the end-of-ball timeline back by the difference.
@@ -193,4 +208,4 @@ What the first Williams WPC game showed (Terminator 2 L-8, in its private game r
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation"; Transformers: [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `README.md`).
 
-Last updated 2026-11-21 (section 5b: the first WPC 6809 game, Terminator 2; before: section 5, what porting Transformers Pro 1.80 showed).
+Last updated 2026-11-21 (section 5b: the first WPC 6809 game, Terminator 2, with phantom replay, award and key-loss lessons; before: section 5, what porting Transformers Pro 1.80 showed).
