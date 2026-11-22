@@ -753,6 +753,17 @@ How the full rules came out (21 feature specs, about 60 reference traces):
    code that reads it.
 8. **Ball save hides drains.** A scenario that tests end of ball must wait out the ball save or turn it off;
    otherwise the drain re-serves the ball and the trace shows no bonus.
+9. **Audit the rules against every effect start site, not against the traces.** Scan the ROM for every call
+   that starts a display effect, a lamp effect or a sound (the inline wrappers and the direct calls), list them
+   by id with their routine, and check that each id is either in a spec or listed as dead code. On Terminator 2
+   (WPC) the game built from 30 traces never played 15 display effects the rules code starts: no scenario
+   reached them, so nothing looked wrong. A full listing of the rules bank from every entry point (switch
+   table, hooks, effect tables, far calls, task creations) found them in minutes.
+10. **Scenarios must follow the ball's real path through every device.** T2's scenarios put the ball straight
+   into the gun (switch 31); on the machine it first drops into the popper behind the drop target (switch 76),
+   whose handler holds a whole sequence ("N TARGETS FOR MULTIBALL", the jackpot relight). Take the device
+   numbers from the switch table's argument byte, not from a guess: T2's device 4 was labelled "gun" and is the
+   popper. A feature audit name (POPPER SHOTS, GUN LOADED) settles it.
 
 The project owner's correction is worth remembering: Flynn's Arcade, which code text suggested was a
 video mode, is a **mystery award**. Ask the owner when the domain knowledge is theirs.
