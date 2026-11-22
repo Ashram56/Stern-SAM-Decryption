@@ -195,9 +195,23 @@ What the first Williams WPC game showed (Terminator 2 L-8, in its private game r
 - **Rules hold balls by claiming them.** A ball that enters a device no rule claims is ejected by MPF at once; the
   rules answer the relay event `balldevice_<device>_ball_enter` with `unclaimed_balls: 0` and kick it themselves
   (MPF detail: MPF-Godot-Packaging). With `entrance_count_delay` at 200 ms the rule reacts at the ROM's time.
-- **Speech is dropped, not queued.** The WPC sound board drops a speech call while a higher one speaks (T2: speech
-  0.43 s after a hurry up call-out dropped, 0.93 s after played). A missing speech in the reference is often
-  this, not a rule.
+- **Sounds are dropped by the OS's priority test, not queued.** WPC's `sound_call` (T2 fix:bdfb) reads a 5-byte
+  record per call from the sound call table (T2 3d:4e38): command, length in IRQ ticks, priority, unused, flags
+  (bit 1 sent as `7a` + command, bit 3 the second channel, bit 5 an equal priority may replace it, bit 6 nothing
+  may). While a channel's sound runs, a call of lower priority is dropped (fix:beb0). Export the table and run the
+  same test in the game for the rules' own calls; the sounds that lamp and display effects send are not calls and
+  bypass it. On T2 it explained every "missing" sound in the traces at once (an extra ball speech eating the drop
+  target speech, a combo sound lost after a hurry up collect) and replaced the special cases built for each.
+- **Have the rules reviewed against the decompile once they pass the traces.** Traces only cover what a scenario
+  reached. On T2 three independent read-only reviewers, each given one scope (playfield, gun and multiball, OS and
+  game flow), the decompiled listings and the game code, found 37 code-proven gaps that no trace showed (a second
+  ramp counter, a jackpot timer, the gun target count per multiball, the high score champion kept apart). Fix each
+  from the code, keep the trace floor as the guard (it rose on T2: sounds 224 to 230, displays 247 to 253 of 263
+  windows), and put what stays open in `rom_differences.md`.
+- **Look for the OS's per-player play time.** WPC keeps each player's seconds of play (T2: record word +34 at
+  38:4c7b, +2 per 122 ticks from the ball's first switch until 915 ticks after the last one, fix:d1a1). Rules
+  read it: the ball save length (5 / 3 / 2 units) and the consolation extra ball (30 s or less) on T2. A rule
+  that "depends on the number of players" in the traces may be this.
 - **Settle times come from the traces when the code reading disagrees.** T2 tilt: the code read 14 ticks, but a
   second closure 2.15 s after a warning was ignored and 3.76 s counted; the traces win, the gap goes to A.
 - **Graphic glyph sets are font records of height 0.** WPC's font table also holds picture sets (T2: 8 records,
