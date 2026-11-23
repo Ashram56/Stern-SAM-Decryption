@@ -56,6 +56,30 @@ overlay, a model) and tells the packaging agent, which carries it to every insta
 
 ## 4. Learned since the playbook (2026-10-04 to 2026-10-08)
 
+- **Attract, credits, parametric screens and lamps before the first owner test** (missed on three games; the
+  owner's first test finds them at once). Before handing over a playable build, check each:
+  1. **Attract is the ROM's own loop**, not one MPF slide: find the attract task's step table (each step: a
+     display object or deff, a wait in ticks, a condition such as an adjustment or "a game was played"), build it
+     step for step with its durations and conditions, and let the flippers step it as the ROM does. A test
+     asserts the order over two full cycles. LOTR: 22 steps at 61:42A1, 16.4 ms ticks, $027D stepped by the
+     flippers (`game/lotr/attract.py`).
+  2. **A coin must change what the player sees.** Find what the ROM shows after a coin (LOTR: INSERT COINS, then
+     the cycle restarts on the score screen 4.0 s after the last coin, which shows the credits) and test it: coin,
+     wait, the credit count is on the display. A credits screen captured once shows one credit count forever.
+  3. **A display object with parameters is not one capture.** If the DMD replays one capture per object, every
+     object whose look depends on its parameters (names picked by an index, values, ranks, credits) is wrong in
+     play (LOTR: the member award always showed ARAGORN, so the owner read it as "Aragorn is always collected"
+     although the rules collected the right member). List these objects from the parameter table, then ask A
+     for one render per discrete value and two renders per numeric object (or the field table: x, y, font,
+     alignment per parameter) in one request, and log the rest as a departure.
+  4. **Lamps from the code, not only the mode inserts.** Ask A for the lamp logic of every lamp (state by RAM
+     flag, the redraw routine, attract and event lamp shows) together with the rules; until then light each lamp
+     from the features' state and label it inferred. Drive lamps from a clock interval, not the game's delay
+     timers: an extra repeating game timer shifted the order of same-instant DMD objects in two trace windows
+     (LOTR).
+  5. **Captures by injection start with the previous object's frames**: trim them (LOTR `gen_media.py
+     trim_carryover`: leading frames within 400 ms that match the previous object better than the object's own).
+
 - **Coin door open** (deff 4, priority 247, never ends by itself): "50V / 20V DISABLED" covers the display
   while the door is open, dims after 30 s; BACK takes it away (sound 0x009) instead of a service credit; the
   interlock cuts every coil but the optional coil 24. Model the power handler, not a timer
