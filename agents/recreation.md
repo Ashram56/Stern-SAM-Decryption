@@ -196,6 +196,89 @@ Each line has the Transformers value as the example.
 - Do not give a feature an attribute and a method of the same name: Python replaces the method silently and
   the hook dies with "int is not callable" deep in a scenario.
 
+## 5b. A WPC 6809 game (from Terminator 2 L-8)
+
+What the first Williams WPC game showed (Terminator 2 L-8, in its private game repository, 2026-11-21). The OS facts are in
+[knowledge/wpc_6809.md](../knowledge/wpc_6809.md) where present; these are the build lessons. T2 values as examples.
+
+- **Compare window by window, not event by event.** The trace check cuts the reference and the rebuild at the
+  scenario's marks and compares per window the score delta (from the marks' player score), the set of sound
+  commands, lamp effects, display effects and coils. Sets survive the 10-50 ms jitter of an emulator; keep a
+  per-scenario floor (`tests/trace_floor.json`) that only goes up. T2: 192 windows, 182 scores matching.
+- **Replay the reference's random outcomes.** Jets and slings pick a random score and sound; the runner reads
+  each hit's `score_idx` and sound from the reference and hands them to the rule in order, so the windows compare.
+  Strict play keeps the ROM's random draw.
+- **The emulator has phantom switches.** PinMAME's ball simulation closes switches the host never logged (T2: 72
+  TARGET 2 about 0.73 s after every plunger pulse; a "10,000 + leff 2e" after each multiball launch looked like a
+  rule for a day). When a score has no switch behind it, ask A to log the simulator's switch changes
+  (`sim_switch` in t2_ref12) and replay them; never build them into the rules. Replay by pulse, not by clock:
+  for the k-th coil pulse of the reference, close the same switches at the same delays after the rebuild's k-th
+  pulse, and skip the pulses the player caused (a gun shot: the rule scores its own target). Only playfield
+  switches: the simulator also logs trough, gun motor and drop target resets the rebuild models itself.
+- **A screen that shows up in odd places may be an award you have not built.** T2's deff 14 + leff 36 + coil 7
+  was put in a lock rule, then appeared in the bonus count: it was the replay (knocker), the score crossing
+  REPLAY AT. Before coding an effect into a rule, check whether the score crossed a threshold (replay, extra
+  ball, high score) in that window.
+- **Host key presses can be lost by the emulator.** PinMAME's keyboard handling releases host-set flipper and
+  START switches about 20 ms later; whole high score entries stalled in the reference. Ask A to press PinMAME's
+  own keys for button scenarios (T2: `ex_hsk`, `ex_hs2k`) and treat the lossy runs as non-references.
+- **Line up power-on.** The reference starts at power-on (T2: attract 3.11 s, `ready` 8.0 s); let the rebuild
+  boot the same distance before `ready` and re-stamp the events already logged, or the power-on sequence lands
+  in the first scenario window.
+- **Keep generated runtime data out of MPF's `data/` folder.** That folder holds machine variables and audits per
+  cabinet; packagers refuse it. Put generated tables (lamp effects replayed from traces, fonts) with the media.
+- **Time the end of ball from the outhole switch.** MPF ends the ball about 0.5 s after the drain switch (device
+  confirm); the ROM's bonus count, ball start and game over are timed from the drain. Record the drain time on
+  the outhole switch and shift the end-of-ball timeline back by the difference.
+- **Rules hold balls by claiming them.** A ball that enters a device no rule claims is ejected by MPF at once; the
+  rules answer the relay event `balldevice_<device>_ball_enter` with `unclaimed_balls: 0` and kick it themselves
+  (MPF detail: MPF-Godot-Packaging). With `entrance_count_delay` at 200 ms the rule reacts at the ROM's time.
+- **Sounds are dropped by the OS's priority test, not queued.** WPC's `sound_call` (T2 fix:bdfb) reads a 5-byte
+  record per call from the sound call table (T2 3d:4e38): command, length in IRQ ticks, priority, unused, flags
+  (bit 1 sent as `7a` + command, bit 3 the second channel, bit 5 an equal priority may replace it, bit 6 nothing
+  may). While a channel's sound runs, a call of lower priority is dropped (fix:beb0). Export the table and run the
+  same test in the game for the rules' own calls; the sounds that lamp and display effects send are not calls and
+  bypass it. On T2 it explained every "missing" sound in the traces at once (an extra ball speech eating the drop
+  target speech, a combo sound lost after a hurry up collect) and replaced the special cases built for each.
+- **Have the rules reviewed against the decompile once they pass the traces.** Traces only cover what a scenario
+  reached. On T2 three independent read-only reviewers, each given one scope (playfield, gun and multiball, OS and
+  game flow), the decompiled listings and the game code, found 37 code-proven gaps that no trace showed (a second
+  ramp counter, a jackpot timer, the gun target count per multiball, the high score champion kept apart). Fix each
+  from the code, keep the trace floor as the guard (it rose on T2: sounds 224 to 230, displays 247 to 253 of 263
+  windows), and put what stays open in `rom_differences.md`.
+- **Look for the OS's per-player play time.** WPC keeps each player's seconds of play (T2: record word +34 at
+  38:4c7b, +2 per 122 ticks from the ball's first switch until 915 ticks after the last one, fix:d1a1). Rules
+  read it: the ball save length (5 / 3 / 2 units) and the consolation extra ball (30 s or less) on T2. A rule
+  that "depends on the number of players" in the traces may be this.
+- **Settle times come from the traces when the code reading disagrees.** T2 tilt: the code read 14 ticks, but a
+  second closure 2.15 s after a warning was ignored and 3.76 s counted; the traces win, the gap goes to A.
+- **Graphic glyph sets are font records of height 0.** WPC's font table also holds picture sets (T2: 8 records,
+  letters N, O and `\` to `a`). Each glyph carries its own frame: `00, dy, dx, height, width`, then the rows as in
+  the letter fonts (least significant bit leftmost), drawn with the left edge at x + dx and the bottom row at
+  y + dy (fix:d57f on T2). Rows can be wider than 64 px: keep them as bytes, not as one integer (an int64
+  overflowed in Godot). With them, an animated screen such as the match can be drawn live from its draw routine,
+  pixel-exact against the capture, instead of replaying frames that show the captured values.
+- **The coin and launch buttons may be on the gun.** On T2 the grip trigger (34) launches the ball from the
+  shooter lane with coil 9 (31:5d0a); there is no manual plunger. A launch by the player counts as a plunge (ball
+  save, plunge sound); a coil 9 launch by the ROM (multiball, ball search) does not.
+- **Map a PinSound pack to ROM sound commands by name, from an altsound template.** An altsound pack's
+  `altsound.csv` lists each sound board command (ID `0x00xx`, `0x7Axx` for the second page) with the PinSound
+  name of its sound (NAME) and a group (1 music, 2 sfx, 3 voice, 4 jingle, 5 single = the PinSound sub-folders).
+  PinSound folders are `<number>-<name>`: join on the name inside the group's sub-folder (the "sorter" method of
+  necro-nemesis/Altsound-converter). Where several folders share a name, pick the one closest in audio to the
+  altsound's own file. On T2 this mapped all 195 commands and agreed with every audio fingerprint and 23 of 24
+  speech alignments, while half of the guesses from game context were wrong (music numbers above all). Prefer it
+  to context. An altsound pack can also be played directly: its csv is the map.
+- **Match a replacement sound pack's speech without speech recognition.** When no ASR model is reachable, align
+  each ROM speech sample with each of the pack's voice lines (MFCC, 19 coefficients normalised per sample, DTW
+  with cosine distance, the mean cost along the path) and keep a match only when the best line is clearly ahead
+  (T2: cost at most 0.62 and 0.04 ahead of the next line: 24 of 82 speech calls, every one plausible against the
+  code; known lines checked first). Two ROM calls on one line: keep the better match, the other falls back to
+  the code's context.
+- **The PuP Pack's lamp and solenoid terms are direct on WPC**: PinMAME's `L<n>` is the lamp matrix number 11-88
+  and `S<n>` the solenoid, so the game posts `<game>_lamp_<n>` when a rule lights a lamp (not on the ball start
+  redraw) and `<game>_coil_<n>` on a pulse ([pup_pack.md](pup_pack.md)).
+
 ## 6. A board other than SAM (from Lord of the Rings, Stern Whitestar 6809, 2026-11-21)
 
 What changed when C ran on a 6809 Whitestar game (Lord-of-the-rings-Decryption, `game/`), with no SAM OS to copy.
@@ -246,4 +329,4 @@ Each line has the LOTR value as the example.
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation"; Transformers: [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `README.md`).
 
-Last updated 2026-11-21 (section 6: a Whitestar 6809 game, Lord of the Rings; mode shots from hook chains, effect ids).
+Last updated 2026-11-22 (section 5b: the WPC sound_call priority test, a decompile review once the traces pass, the per-player play time, from Terminator 2; section 6: a Whitestar 6809 game, Lord of the Rings; mode shots from hook chains, effect ids; before: section 5b, the first WPC 6809 game, Terminator 2; section 5, what porting Transformers Pro 1.80 showed).

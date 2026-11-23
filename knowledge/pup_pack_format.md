@@ -92,7 +92,8 @@ When a video ends, the screen's background comes back. (code)
 | `D<n>` | PinMAME's DMD shows capture `<n>` (section 6) | the event the game posts when the display effect that draws that frame takes the DMD (Tron: `tron_deff_<id>`); found by matching the capture against every frame the game can show |
 | `D0=1` | PinUP Player starts | an event the game posts when its PuP player is ready |
 | `W<n>=1` / `W<n>` | PinMAME switch `n` closes | the switch, **by name**: PinMAME's switch number is the SAM switch number, but a hardware overlay (P-ROC) renumbers switches |
-| `L<n>=1` | PinMAME lamp `n` is on | rarely what it looks like: PinMAME's lamp numbering is not the SAM lamp matrix numbering (Tron: `L35`). Replace the whole row with the game event it means |
+| `L<n>=1` | PinMAME lamp `n` is on | rarely what it looks like on SAM: PinMAME's lamp numbering is not the SAM lamp matrix numbering (Tron: `L35`). Replace the whole row with the game event it means. On WPC it is the lamp matrix number 11-88 (T2 `L44` = EXTRA BALL) |
+| `S<n>` | PinMAME solenoid `n` fires | WPC: the solenoid number (T2 `S8` = kickback) |
 | several terms (`W11=1,L35=1`) | all are true at once | an override: the row ID mapped to the game event (Tron: row 23, VUK while Flynn's Arcade is lit = the arcade award effect) |
 | other letters | other PinMAME outputs or table script events (inferred: none in the Tron pack) | map by hand, per row |
 
@@ -147,5 +148,5 @@ A pack is made against one ROM version: its captures are that version's frames. 
 release of the pack, can change captures or rows: re-run the match and the decode, and fix the map lines that
 change. Record the pack's version and author with the game. (inferred)
 
-Last updated 2026-10-18 (median still of a background loop, with ffmpeg tmedian; a page drawn over a PuP window; from the Tron pack's decoding in Tron-LE-PuP-Pack and the Tron-Legacy-MPF-PuP player; whole-frame
+Last updated 2026-11-21 (WPC lamp and solenoid terms, T2; before 2026-10-18: median still of a background loop, with ffmpeg tmedian; a page drawn over a PuP window; from the Tron pack's decoding in Tron-LE-PuP-Pack and the Tron-Legacy-MPF-PuP player; whole-frame
 captures, effects with several animations, CustomPos boxes and PuPOverlays from the Transformers pack).

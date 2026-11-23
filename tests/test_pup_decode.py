@@ -119,3 +119,23 @@ def test_capture_without_a_rectangle_compares_the_whole_frame():
     cap = pup_decode.capture(out.getvalue())
     assert cap["rect"] == [0, 0, 127, 31]
     assert bin(cap["lit"]).count("1") == 3
+
+
+def test_scaled_frames_and_hex_ids(pack_zip, tmp_path):
+    """A 2x capture (T2's 256x64 GIFs) is read as 128x32; --id-text keeps hex ids with their zeros (deff04)."""
+    frames = tmp_path / "deffs"
+    frames.mkdir()
+    image = Image.new("L", (256, 64))
+    for x, y in ((12, 6), (13, 6), (14, 7)):
+        for dx in (0, 1):
+            for dy in (0, 1):
+                image.putpixel((2 * x + dx, 2 * y + dy), 200)
+    image.save(str(frames / "deff0a.gif"))
+    report, ymap = tmp_path / "report.md", tmp_path / "map.yaml"
+    try:
+        assert pup_decode.main(["match", str(pack_zip), str(report), "--frames", str(frames / "deff*.gif"),
+                                "--id-regex", r"deff([0-9a-f]{2})", "--id-text", "--event", "t2_deff_{id}",
+                                "--map", str(ymap)]) == 0
+    finally:
+        pup_decode.KEEP_ID_TEXT = False
+    assert "  1: [t2_deff_0a]  # 100%" in ymap.read_text().splitlines()
