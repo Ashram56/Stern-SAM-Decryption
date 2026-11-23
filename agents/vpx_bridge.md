@@ -145,6 +145,31 @@ documented with a draft upstream issue in MPF-Godot-Packaging
 - Unit tests: drive the platform's `vpx_*` methods the way the `vpcom_bridge` BCP handler does, and poll
   `changed_solenoids` between steps as the table does every frame, or a pulse that ended is counted twice.
 
+## 4b. A WPC table (Terminator 2, g5k 1.25, `t2_l8`)
+
+Built 2026-11-21 in Ashram56/Terminator-2-Decryption (private; `game/t2/vpx_hardware.py`, `scripts/vpx_bridge.py`,
+`docs/vpx.md`), from Transformers' files. What changes for a Williams WPC 6809 table (code: wpc.vbs and core.vbs
+v10.8.1, PinMAME `src/wpc/mech.c`, `sims/wpc/full/t2.c`; verified in 11 unit tests and `--check` over BCP; VPX itself
+is owner test):
+
+- **Keep the game's IO numbers, translate in the adapter.** A game whose `io.yaml` numbers devices `S11`, `SD1`, `C01`,
+  `L11` (read by its rules code) needs no overlay renumbering: the adapter maps PinMAME's numbers (matrix 11-88 =
+  `S<n>`, coin door 1-8 = `SD<n>`, solenoid n = `C<nn>`, lamp n = `L<n>`).
+- **Flippers without Fliptronics** (pre-1992 WPC: T2, Gilligan's Island, Party Zone): wpc.vbs sends `swLLFlip` 114 /
+  `swLRFlip` 112; PinMAME maps them to the game's matrix flipper switches (`FLIP_SWNO(12,11)` in the sim file). The
+  fast-flip input is `GameOnSolenoid = 31` (the flipper relay), and PinMAME reports the flipper coils as `sLLFlipper`
+  48 / `sLRFlipper` 46. Fliptronics games use the same 112-118 keys but ROM-driven flipper solenoids (wpc.vbs notes).
+- **Coin door**: matrix switch 22, toggled by wpc.vbs's `keyCoinDoor` itself; no KeyDown line in the table script
+  (SAM's -4 needs one). The table sets 22 and 24 (always closed) in `Table1_Init`.
+- **`cvpmMech` is the controller's job.** A table with `HandleMechanics = 0` and a `cvpmMech` (T2's gun: Sol1 11,
+  Length 240, Steps 240, Reverse + NonLinear, switches 33 home / 32 mark) writes `Controller.Mech(1..7, 10..)`, then
+  `Mech(0) = n`, and reads `GetMech(n)` / `GetMech(-n)` every frame; PinMAME moves it and closes its switches. MPF
+  0.80.1's `vpx_set_mech` / `vpx_get_mech` only log a warning, so the gun never moves and its switches never close.
+  Port `mech.c`'s `mech_update` (60 Hz, MECH_STEP 60, ~60 lines) into the adapter and forward `SetMech`/`GetMech`
+  from the COM bridge. Grep the script for `cvpmMech` and `HandleMechanics`.
+- **GI**: WPC tables call `GICallback2` with strings 0-4; report all five at 255 when the game has no GI output.
+- `LoadVPM` names `WPC.VBS`: `vpx_table.py`'s loader regex takes any `<name>.vbs`.
+
 ## 5. Open items per game
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "D, VPX bridge"),
@@ -152,4 +177,4 @@ starting with the owner's Windows test.
 
 Keep this file current with every generic fix; owner test results go on the game page. Last updated 2026-10-10
 (moved to Stern-SAM-Decryption; Tron status and open items to the Tron game page; Transformers: generic bridge,
-physical outputs, GI, autofire, cloud testing; Tron: scoop ball stacks, stuck balls; 2026-10-28: saucer mode, pointer to the MPF fix doc).
+physical outputs, GI, autofire, cloud testing; Tron: scoop ball stacks, stuck balls; 2026-10-28: saucer mode, pointer to the MPF fix doc; 2026-11-21: section 4b, WPC tables and cvpmMech).
