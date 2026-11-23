@@ -77,6 +77,10 @@ overlay, a model) and tells the packaging agent, which carries it to every insta
      from the features' state and label it inferred. Drive lamps from a clock interval, not the game's delay
      timers: an extra repeating game timer shifted the order of same-instant DMD objects in two trace windows
      (LOTR).
+  Lamp traces read from the emulator's lamp matrix while it strobes see only part of the columns per sample (LOTR:
+     alternating 0x5 / 0xA nibbles): replayed raw they flicker at random. OR the samples over a window longer than
+     one strobe cycle (LOTR: 70 ms) before replaying or measuring a flash, and turn every lamp off when a game
+     starts so the attract show's lamps do not stay lit where no rule redraws them.
   5. **Captures by injection start with the previous object's frames**: trim them (LOTR `gen_media.py
      trim_carryover`: leading frames within 400 ms that match the previous object better than the object's own).
 
