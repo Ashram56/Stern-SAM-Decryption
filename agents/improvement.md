@@ -119,6 +119,29 @@ screens in `game/tron/service.py`, `docs/scorbit.md`, `docs/network.md`, `tests/
 | `wpa_cli` needs the control socket's group (`ctrl_interface=... GROUP=sudo`) and `update_config=1` to save; `nmcli` needs polkit outside a desktop session (inferred from the configs; not yet run on a cabinet) | With `wpa_cli`, hash the PSK yourself (`pbkdf2_hmac("sha1", pw, ssid, 4096, 32)`, as `wpa_passphrase`; test vector "password"/"IEEE" = `f42c6fc5...`) so the password is never on a command line or in the file; `select_network`, poll `status` for `COMPLETED`, then `enable_network all` and `save_config`; remove the network again if it failed (`4WAY_HANDSHAKE` seen = wrong password). |
 | SAM ROM fonts have capitals only (Tron: all 44 fonts, no lower case) (observed) | Text entry for case-sensitive input (passwords): lower case as small capitals (a smaller ROM font) beside capitals, and a line naming the kind of the character being chosen (LOWER CASE, UPPER CASE, NUMBER, the symbol's name when no font has its glyph). MINUS / PLUS change it (held: auto-repeat), SELECT adds, BACK deletes, the flipper buttons jump between kinds, an END entry finishes. |
 
+## 2c. Display scripts on a slow GPU: 3D backgrounds and video layers with overlays
+
+Rules for the game's display code (its PuP runtime and 3D or video scenes), found by reading the code of a game with a live 3D background
+behind its DMD, three video layers and a DMD overlay (desk analysis 2026-11-23, **not yet measured as a whole**; fact tags: code, observed,
+inferred). They change the engine, the platform and the display scripts only, **never a game's content** (videos, pictures, look). What the
+platform must provide (video copy paths, decoder threads, per-board budgets) is MPF-Godot-Packaging's
+[platforms/render-guidelines.md](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/platforms/render-guidelines.md); the measurements of the Godot
+canvas shader and `clip_children` are in its `fixes/godot/`.
+
+| Rule | Why | In the worked game |
+|---|---|---|
+| **Render nothing under an opaque overlay.** Compute the visible rectangles; a 3D scene behind an opaque DMD is pure overdraw | the DMD covers about 42 % of the 3D background's pixels (code, `pup.cfg` shares 0.68 x 0.62) | render in bands around the DMD, or at least at half resolution (`--arena-res=half`) |
+| **A background updates at its own rate.** `SubViewport.render_target_update_mode` on a timer (15-20 Hz); the UI, video and DMD stay at the frame cap | a background does not need 30 updates a second | the 3D arena renders every frame |
+| **Layers are opaque; a covered layer is neither drawn nor decoded.** A layer with an alpha plane costs a read and a blend and keeps the layers under it alive | measured -3 to -8 % with a colour key on a Raspberry Pi 4 | `covers()` / `set_covered()` of `pup_screen.gd` already do it: keep it as the contract of any new layer |
+| **No mesh rebuilt per frame.** A trail or ribbon is one mesh made once; its fade is computed in the shader from a birth-time attribute and a `now` uniform | `ImmediateMesh.clear_surfaces()` and 6 vertices per segment per frame, uploaded every frame (code) | the grid floor already animates in its shader with nothing per frame on the CPU: do the same for the trails |
+| **A full-window procedural layer becomes the quads it needs.** A frame or border is a strip around the edge, not a window-sized rectangle with a fragment shader | a window-sized `ColorRect` pays its shader for every pixel (code) | the neon frame is one over the whole DMD window |
+| **Few viewports, few passes.** Each `SubViewport`, `clip_children` and backbuffer read is a full pass on a tile-based GPU | +20 points of GPU for `clip_children` on a Pi 4 (observed) | do not add a post-processing viewport above the 3D |
+| **Lights, fog, MSAA and glow are per-board options with a cheap default on ARM.** `unshaded` materials, MSAA off, no fog or lights, glow only where the renderer supports it | V3D and Mali implement 4x MSAA only (inferred); glow is a chain of full-frame passes; Compatibility glow support to check in the log | `--arena-msaa`, `--arena-res` exist; add the cadence and a light/none setting |
+| **Declare the board's budget, not the scene's cost.** A profile says how many full-screen layers and what 3D quality it allows; a new scene follows the profile | one measurement per board replaces tuning every scene | `limits.md` of the platform |
+
+Before adding a 3D scene or a layer: list which pixels it draws that an opaque layer later covers, how often it must update, and what it
+allocates per frame (meshes, `Image`s, arrays). Check with the perf probe's frame times and the board's GPU counters, not the desktop's.
+
 ## 3. Owner decisions and ideas not built
 
 Per game, on its game page, with dates (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md)).
@@ -130,4 +153,4 @@ Ask the owner before starting any idea listed there as not built.
 and pictures at 1920x480 and 3840x960 for the owner (render through Xvfb with `--rendering-driver opengl3`;
 `--headless` draws nothing). Bump `frame_text.VERSION` when the text matching changes (it keys the cache).
 
-Last updated 2026-10-16 (Scorbit and Wi-Fi from the service menu, section 2b; before: finding what causes a hitch; display options in the service menu; moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).
+Last updated 2026-11-23 (section 2c, display scripts on a slow GPU; earlier: 2026-10-16 Scorbit and Wi-Fi from the service menu, section 2b; before: finding what causes a hitch; display options in the service menu; moved to Stern-SAM-Decryption; Tron defaults and decisions to the Tron game page).
