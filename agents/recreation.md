@@ -14,7 +14,7 @@ the worked example. File paths in `code` are the Tron game repo's ([Tron-Legacy-
 
 ## 1. Scope
 
-**In** (all as the ROM does it, from the asset repo's specs, `rom_data/` and traces):
+**In** (all as the ROM does it, from the code: A's functional diagram, specs and `rom_data/`; traces only confirm):
 
 | Area | Includes |
 |---|---|
@@ -46,7 +46,8 @@ overlay, a model) and tells the packaging agent, which carries it to every insta
 ## 3. Definition of done
 
 - `tests/test_traces.py` (scenario → event kinds that match the reference trace) only ever gains kinds; a
-  feature is accepted when its scenario's trace matches (`scripts/trace_check.py <scenario>`).
+  feature is accepted when every rule cites its ROM routine (from A's functional diagram) **and** its scenario's
+  trace matches (`scripts/trace_check.py <scenario>`). A trace match alone does not accept a feature.
 - `pytest -q tests` green; `scripts/render_check.py` (no blank DMD); `scripts/render_diff.py` for display work
   (text pixel-exact against the reference captures); classic frames unchanged (pixel-hash tests).
 - Unit tests for paths no reference scenario reaches; RNG seeded in tests only.
