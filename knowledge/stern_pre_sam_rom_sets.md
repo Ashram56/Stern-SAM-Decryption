@@ -64,3 +64,9 @@ libpinmame plus a patched PinMAME core (RAM-write, solenoid-write and DMD-packet
   effect's lamps and starters; record attract and one game with lamp events (as a mask per change) so the game can
   replay the shows whose internal timing is not decoded. Hand this over with the rules: the game agent otherwise
   lights only the mode inserts.
+- **Record lamps per full matrix scan, not per sample.** Whitestar games drive the rows of a lamp column in turns, so
+  one sample of the matrix (or libpinmame's changed-lamp polling) shows about half of the lamps that are on (LOTR:
+  alternating 0x5 / 0xA nibbles) and a replay flickers at random. Hook the lamp driver writes in PinMAME's `se.c`
+  (row and strobe handlers), OR the rows per column over 2 scans (a scan is about 10 ms; the strobe returning to
+  column 0 marks it) and write one full state per change. LOTR's recorder: `LOTR_LAMPSCAN` in its
+  `tools/pinmame/lotr_trace.patch` (private repo).
