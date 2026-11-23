@@ -9,7 +9,7 @@
 
 Game agnostic. From a Visual Pinball X table (`.vpx`), produce what MPF Monitor needs (the playfield picture
 and every switch, lamp and flasher placed on it, named as the MPF machine config names them) and the table's
-script (which the [VPX bridge agent](vpx_bridge.md) starts from). Tron Legacy is the worked example. Labels:
+script (which the [VPX bridge agent](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/agents/vpx_bridge.md) starts from). Tron Legacy is the worked example. Labels:
 **verified** = done on a real table, **unverified** = reasoned, not run.
 
 Part of the [master plan](README.md). Keep this file current: fold in anything a later table teaches.

@@ -1,19 +1,19 @@
-# Knowledge base: rebuilding a Stern SAM game in MPF
+# Knowledge base: taking a Stern SAM game apart
 
-The master plan is [../agents/README.md](../agents/README.md): what the owner provides, and the agents (ROM
-extraction, VPX extraction, strict recreation, VPX bridge, improvements, packaging) with their instructions.
-The files below are the reference docs those agents read. Each is short, dense and self-contained: read only
+The master plan is [../agents/README.md](../agents/README.md): what the owner provides, and the agents with their instructions. This
+repository is the **decryption** half (ROM extraction, VPX extraction); the MPF implementation half, with its own knowledge
+([the SAM to MPF playbook](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/knowledge/sam_to_mpf_playbook.md), [MPF's own quirks](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/knowledge/mpf.md), the
+[HD DMD method](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/knowledge/dmd_hd_upscaling.md), [DMD conformance](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/knowledge/dmd_conformance.md), the
+[PuP Pack format](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/knowledge/pup_pack_format.md)), is in [MPF-Godot-Packaging](https://github.com/Ashram56/MPF-Godot-Packaging).
+The files below are the reference docs agents A and B read. Each is short, dense and self-contained: read only
 the one your task needs. The biggest body of SAM knowledge, how to take a ROM apart, is the ROM extraction
 agent itself: [../agents/rom_extraction.md](../agents/rom_extraction.md).
 
 | File | Read it when | Size |
 |---|---|---|
-| [sam_to_mpf_playbook.md](sam_to_mpf_playbook.md) | You build or maintain an MPF recreation of **any** Stern SAM game from ROM-derived specs. Architecture, build order, verification loop and every gotcha that cost real time. Game agnostic; Tron is only the worked example. | ~15 min |
-| [dmd_hd_upscaling.md](dmd_hd_upscaling.md) | You work on the optional HD display (128x32 DMD drawn at any window size). Separate from the rules work on purpose. | ~5 min |
-| [dmd_conformance.md](dmd_conformance.md) | You check a recreation's DMD against PinMAME frame by frame (needed for a colourisation, which finds frames by their dots). | ~3 min |
 | [sam_hardware/](sam_hardware/README.md) | You need the SAM CPU to IO board bus, its timing, the lamp matrix, or any interface the CPU board drives (DMD, sound, switches, timers): same boards on every SAM game, measured with the Tron ROM. CSVs beside it. | ~15 min |
 | [sam_os_api.json](sam_os_api.json) | You name OS functions in a new ROM's decompile: 160 SAM OS functions with signatures, meaning and evidence (Tron LE 1.74 addresses; find each again with the ROM extraction agent's section 5.1). | grep it |
-| [pup_pack_format.md](pup_pack_format.md) | You play a PinUP Player pack (PuP Pack) with the MPF game: the pack's files, trigger codes and how each maps to a game event, how a DMD capture is matched. Tool: [../tools/pup/](../tools/pup/pup_decode.py); agent: [../agents/pup_pack.md](../agents/pup_pack.md). | ~6 min |
+| [dmd_deff_engine_rules.md](dmd_deff_engine_rules.md) | You read the SAM display-effect engine from the ROM (what is the engine, what is the game) instead of fitting it to captures. | ~4 min |
 | [wpc_6809.md](wpc_6809.md) | You apply the method to a 6809 game (Williams WPC; Whitestar similar): memory map, far calls and inline-argument wrappers, the OS registry, emulator gotchas, effect and sound injection. Measured on Terminator 2 L-8. | ~5 min |
 | [templates/](templates) | You write rules specs: one-file-per-feature template and the brief given to the Tron rules workers. | ~3 min |
 | [../tools/rom/](../tools/rom/README.md) | You extract a ROM: the Tron toolkit (emulator trace, Ghidra pipeline, table extractors, media exporters, bus tracer) and how to retarget it. | ~3 min |
@@ -39,4 +39,4 @@ bios, 8 files) looks like and why the SAM tools do not apply as is.
 5. Run the checks instead of reasoning about them: `pytest -q tests` and `scripts/trace_check.py <scenario>`
    answer "does it match the ROM" faster than reading the trace.
 
-Last updated 2026-11-21 (WPC / 6809 page added; earlier: moved here from Tron-Legacy-MPF `docs/handover/`, PuP Pack format).
+Last updated 2026-11-23 (MPF-side docs moved to MPF-Godot-Packaging; earlier 2026-11-21: WPC / 6809 page added; earlier: moved here from Tron-Legacy-MPF `docs/handover/`, PuP Pack format).

@@ -55,10 +55,10 @@ is not needed here; it goes to agent B.
 
 | Agent | Reads |
 |---|---|
-| [C, strict recreation](recreation.md) | everything; the traces are its acceptance test. Its feedback is section 14 (first written as [rom_decomp_feedback.md](../knowledge/rom_decomp_feedback.md)). |
+| [C, strict recreation](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/agents/recreation.md) | everything; the traces are its acceptance test. Its feedback is section 14 (first written as [rom_decomp_feedback.md](../knowledge/rom_decomp_feedback.md)). |
 | [B, VPX extraction](vpx_extraction.md) | `mpf_package/config/switches.yaml`, `lights.yaml`, `coils.yaml` for device names by number |
-| [D, VPX bridge](vpx_bridge.md) | the IO tables with PinMAME's numbers next to the ROM's (section 14, item 13) |
-| [E, improvements](improvement.md) | fonts, per-frame text draws in the captures, all ROM images |
+| [D, VPX bridge](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/agents/vpx_bridge.md) | the IO tables with PinMAME's numbers next to the ROM's (section 14, item 13) |
+| [E, improvements](https://github.com/Ashram56/MPF-Godot-Packaging/blob/main/agents/improvement.md) | fonts, per-frame text draws in the captures, all ROM images |
 
 **Keep this file current.** It is the project's memory for the next ROM. Whenever a thread learns
 something that would change how another SAM ROM is taken apart (a new method, a hardware fact, a
