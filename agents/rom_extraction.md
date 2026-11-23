@@ -154,6 +154,11 @@ the same day).
     traces; traces and rulesheets only confirm. On Lord of the Rings C built from traces before this existed, and
     the owner found a dozen wrong or missing rules (souls, member collection, credits screen, coin sound, music);
     Terminator 2 did the diagram first.
+    The delivery includes the display effect scheduler (per effect: object, priority, queue or drop, how long its
+    script holds the display) and the routines every mode shares (blocking-task gates, the common switch award,
+    the ball-in-play award, the multiball end), each read in the disassembly: on LOTR a third of the differences a
+    later audit found were errors in the rule sheets themselves, so have a second session re-read each sheet
+    against the disassembly before C codes from it. Add a flow chart per mode for the owner (recreation.md 6).
 
 ---
 
