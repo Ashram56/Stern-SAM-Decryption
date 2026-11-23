@@ -47,3 +47,20 @@ libpinmame plus a patched PinMAME core (RAM-write, solenoid-write and DMD-packet
   address, min, max in BCD; audits: 3-byte entries format, address) in the same order as the name lists of the
   display ROM; a fresh-NVRAM boot gives the factory defaults, and the country presets are install records
   (descriptor pointer + data, 0xFF terminated).
+
+## Display objects and lamps for the recreation agent (learned on LOTR, 2026-11-23)
+- **Display objects with their real parameters.** A capture of every object with default parameters is not enough:
+  the game agent redraws "ARAGORN 200,000" for every member and "INSERT COINS" whatever the credits. Before handing
+  over, render by DMD injection (a PinMAME hook that replaces the game's DMD writes by packets from a file):
+  one render per value of each discrete parameter (member, mode, rank, message), two renders per object that differ
+  only by a BCD value (1,234,567 / 9,876,543) to locate the number, renders where every parameter byte is a distinct
+  BCD pair for objects whose value is elsewhere, and the credit screens after the credit packets (0, 1/2, 1, 2, 9
+  credits, free play). Deliver 1x frames with their durations and a CSV per case. LOTR tool:
+  `tools/dmd_param_renders.py` in the game's extraction repo.
+- **Lamps are two layers on Whitestar.** Layer 1 is the game state (on, flash, off bit arrays, saved per player with
+  the flags); layer 2 belongs to lamp effects (a table of lamp list + code task per effect id, start/stop by id,
+  priority by id), which own their lamps while they run. Decode layer 1 from the redraw routines that a "refresh the
+  playfield" routine calls one after the other (find it by the run of calls into the lamp bank), and list each
+  effect's lamps and starters; record attract and one game with lamp events (as a mask per change) so the game can
+  replay the shows whose internal timing is not decoded. Hand this over with the rules: the game agent otherwise
+  lights only the mode inserts.
