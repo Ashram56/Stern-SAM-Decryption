@@ -155,7 +155,10 @@ the same day).
     the owner found a dozen wrong or missing rules (souls, member collection, credits screen, coin sound, music);
     Terminator 2 did the diagram first.
     The delivery includes the display effect scheduler (per effect: object, priority, queue or drop, how long its
-    script holds the display) and the routines every mode shares (blocking-task gates, the common switch award,
+    script holds the display: walk every path of the script, both ways at each conditional branch, and sum its
+    sleeps; when the paths differ, name the RAM the branch tests so C passes the length its state picks; a path that
+    loops back is a counted loop or a wait, so its sum is too short: leave it open; LOTR: 57 of 178 scripts branch,
+    most to the same length) and the routines every mode shares (blocking-task gates, the common switch award,
     the ball-in-play award, the multiball end), each read in the disassembly: on LOTR a third of the differences a
     later audit found were errors in the rule sheets themselves, so have a second session re-read each sheet
     against the disassembly before C codes from it. Add a flow chart per mode for the owner (recreation.md 6).
