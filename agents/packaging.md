@@ -187,6 +187,41 @@ soon as the game repo exists:
   the tag on GitHub or from a clone (observed, Tron-Legacy-MPF-PuP `jetson-agx-orin-l4t-r36.4.3`). Name the tag and
   the commit in the report.
 
+- **A thin kit on the platform** (Terminator 2, 2026-11-21: Ashram56/Terminator-2-Decryption `scripts/`, private):
+  a new game need not copy Tron's `toolchain.py`/`setup.py`. Its installers run MPF-Godot-Packaging's own one-line
+  installer (Git, Python, MPF, Godot, GMC into `~/MPF-Godot`, `-- --extra pillow` for the game's packages), then
+  clone the game and run its `setup.py` with the platform's venv; `scripts/toolchain.py` finds the platform
+  (`<P>_TOOLCHAIN`, the folder saved by the last setup, `~/MPF-Godot`, a sibling clone) and re-exports its pins and
+  `ROOT`, `GAME`, `venv_python`, `host_os` for the PuP runtime's scripts; `run.py` calls `mpf_godot run`. One
+  `install.sh` serves macOS and Linux (it calls the platform's `install_macos.sh` or `install_linux.sh`). Tested
+  end to end on Linux (clone, setup, attract); the platform's installer can be swapped for a fake one in tests
+  (`T2_PLATFORM_INSTALLER`), so the update cases (untracked `.uid`, branch gone) run on local repositories.
+- **A private game's one line**: `raw.githubusercontent.com` serves a private file with the token in a header, so
+  the line can still fetch itself: `bash <(curl -fsSL -H "Authorization: Bearer $T2_GITHUB_TOKEN" URL)`; Windows
+  `irm -Headers @{Authorization=('Bearer ' + `$env:T2_GITHUB_TOKEN)} URL` inside the `-Command "..."` string, the
+  backtick keeping `$env:` for the child shell (unescaped, the outer shell pastes the bare token into the code).
+  Inferred from GitHub's documented behaviour; not run by the owner yet.
+- **The PuP runtime's video add-ons without binaries in the game**: `scripts/pup_setup.py` (tools/pup/runtime) copies
+  GoZen and native_video from the repository's `pup_addons/`, and removes `game/addons/gde_gozen` when that folder is
+  missing. A game on the platform fills `pup_addons/` (git-ignored) from MPF-Godot-Packaging's `addons/` during setup
+  instead of committing 30 MB of binaries. A pack placed by hand (no submodule) works: call `pup_setup.setup()` only
+  when `pup_pack/triggers.pup` exists or a zip is given, else it tries a submodule the game does not have.
+- **Media stale checks hash every input folder**, not a list of file types: agent C's `gen_media.py` began reading
+  `dmd/fonts/fonts.json` the same day, and a check on `deff*.gif`/`*.ogg` only would have missed it (T2, 2026-11-21).
+- **Bundles and the PuP**: a format 2 bundle of a PuP game builds and boots (T2: 11 MB, `mpf_godot local install`,
+  attract), but the PuP runtime (`tools/pup/runtime`, @ fb238ad) does not read the platform's `MPF_PUP_PACK` and wants
+  `pup_media/manifest.json`, so such a bundle plays without the pack until the runtime does (open).
+- **Third-party sound packs and the sound source as setup options**: a PinSound pack (or any media pack) is never
+  committed; `setup.py --pinsound-zip ZIP` extracts the folder holding `config.pinsound` (at any depth, path
+  traversal refused, once per zip by a sha256 stamp) into a git-ignored folder, and `--music` / `--effects` write the
+  cabinet's git-ignored `sound.local.cfg`, keeping its other keys. Giving a pack turns its effects on; the music
+  changes only when asked (T2, 2026-11-21: Averell's pack, 463 files, 51 sound commands loaded).
+- **The VPX option in one step (`-Vpx -Table`)**: the COM server's registration and pywin32's post-install need
+  Administrator. Rather than asking the player for a second, elevated shell, `setup.py` relaunches itself with a hidden
+  `--vpx-register` through `Start-Process -Verb RunAs -Wait -PassThru` (one UAC prompt, exit code kept) and, elevated,
+  uses `sys.executable`, not the environment (an elevated process may not inherit it). Then the table's `.vbs` is
+  written unelevated. Not run on Windows yet (T2, 2026-11-21).
+
 ## 5a. Jetson and 5d. Raspberry Pi 4: moved to MPF-Godot-Packaging
 
 Board and platform findings (Jetson Xavier NX / AGX Orin install order, power modes, screens, hardware decoding;
@@ -310,7 +345,7 @@ Checked on a PC only (Tron, 2026-10-24); the arm64 bundle on a real Pi 4 or Jets
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "F, packaging").
 
-Keep this file current with every installer change and owner test. Last updated 2026-10-29 (the platform holds no game: the game provides a complete package and its description, section 5c; 2026-10-27: setup.py --scorbit; 5b, signed Raspberry Pi image design facts; prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
+Keep this file current with every installer change and owner test. Last updated 2026-11-21 (a thin kit on MPF-Godot-Packaging, a private game's one line, PuP add-ons from the platform, Terminator 2; 2026-10-29: the platform holds no game: the game provides a complete package and its description, section 5c; 2026-10-27: setup.py --scorbit; 5b, signed Raspberry Pi image design facts; prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
 
 ## Test a prebuilt bundle before it goes to a machine (lessons of Transformers, 2026-10-28)
