@@ -157,11 +157,16 @@ the same day).
     The delivery includes the display effect scheduler (per effect: object, priority, queue or drop, how long its
     script holds the display: walk every path of the script, both ways at each conditional branch, and sum its
     sleeps; when the paths differ, name the RAM the branch tests so C passes the length its state picks; a path that
-    loops back is a counted loop or a wait, so its sum is too short: leave it open; LOTR: 57 of 178 scripts branch,
-    most to the same length) and the routines every mode shares (blocking-task gates, the common switch award,
+    loops back is a counted loop or a wait, so its sum is too short: run it instead, see below; LOTR: 57 of 178
+    scripts branch, most to the same length) and the routines every mode shares (blocking-task gates, the common switch award,
     the ball-in-play award, the multiball end), each read in the disassembly: on LOTR a third of the differences a
     later audit found were errors in the rule sheets themselves, so have a second session re-read each sheet
     against the disassembly before C codes from it. Add a flow chart per mode for the owner (recreation.md 6).
+    Lamp shows and looping scripts: run the OS task itself on a CPU emulator (6809: PyPI `MC6809`; ARM for SAM:
+    unicorn) with the ROM mapped, stop it at each OS sleep call (record the lamp bit maps, advance the tick count),
+    switch banks at the far-call stub, and end at the task-exit routine. LOTR `tools/leff_emu.py`: all 77 lamp
+    effects and every display script in 9 s, the frames of 26 one-shot shows, the tick each script starts its lamp
+    show, and the length of 18 looping scripts; a loop counted by game RAM takes the RAM you set (zero by default).
 
 ---
 
