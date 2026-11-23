@@ -258,6 +258,15 @@ Moved to [MPF-Godot-Packaging `platforms/godot-performance.md`](https://github.c
 - Fonts: the font table and glyph offsets are code data, not in the images; the font index is the image
   group index. Text drawn in Godot's default font anywhere is a bug (test for it).
 - Sound calls `0x01-0x08` are channel stops; music calls replace the running music.
+- When the sound calls are not decompiled yet, derive them from the reference traces: for each display object (and
+  its variant byte) and each switch, the sound commands sent within 0.2-0.25 s in at least ~80 % of its showings or
+  hits; bumpers and slingshots play one sound from a set each hit (pick at random from the observed set). Play the
+  table's sound unless the feature already sent it (dedup by command, 0.25 s), and compare per scenario window
+  (`--kinds sound`). On LOTR (Whitestar) this took sound recall from 7 % to 41 % at 79 % precision
+  (`game/scripts/gen_obj_sounds.py` there). Also from the traces: the main music at the start, a launch sound per plunge.
+- Credits: MPF's credits mode applies its own `free_play` setting when it starts; calling `enable_credit_play()` again
+  registers the coin handlers twice (one coin counts double). Map the ROM's FREE PLAY adjustment onto it only when the
+  two differ.
 
 ## 7. Working rules
 
