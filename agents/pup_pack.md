@@ -89,11 +89,15 @@ Screens 2 and 12 (backglass underlay and top layer), 13 and 14 (topper, `off` in
    (`rom/mpf_package/media/dmd/deffs/deff_NNN/frames/*.png`, `.../deff_NNN/reference_capture.gif`); the runtime's
    `scripts/pup_captures.py` takes the globs, `event_map.csv` and the event name from `game/pup.cfg [captures]`
    and checks the trigger map against the match after every sync.
+   Frames captured at a whole scale (T2: 256x64 GIFs) are read as 128x32; ids that are hex or carry leading
+   zeros (T2 `deff04`) need `--id-text`, else the map says `t2_deff_4`. T2 (LTek's pack, 2026-11-21): 58 captures,
+   38 mapped, 30 of them at 100 %.
 3. **Check every line by hand** (knowledge doc section 6): shared frames, partial frames (score lines: map to
    `player_added{num==n}`), frames the game never records (boot screen, attract logo: the game's PuP side posts
    its own events), unused captures, conditions on event arguments.
 4. **Switches by name** (`switches: {n: s_name}`); **lamp terms and multi-term rows as overrides** (`override:
-   {row ID: [events]}`): PinMAME's lamp numbers are not the SAM lamp matrix's (Tron `L35`).
+   {row ID: [events]}`): PinMAME's lamp numbers are not the SAM lamp matrix's (Tron `L35`). On WPC they are the
+   matrix numbers 11-88 and `S<n>` is the solenoid (T2), so lamp and solenoid events map one to one.
 5. Keep the game's own matcher in the game repo (Tron: `scripts/pup/pup_captures.py` writes `docs/pup/captures.md`
    and marks **check** where the mapped effect no longer draws the capture) and run it after every sync with
    the upstream game.
@@ -257,6 +261,22 @@ mp4s stay as they are (the platform's GoZen plays them). So the runtime's `pup_s
 - Screen numbers and roles are the author's: Transformers puts the music on 4 and the topper on 0 (both `off` in
   the shipped option), and five overlay boxes on the backglass with `CustomPos`. Read `screens.pup`; configure
   the windows' `layers` from it.
+- **The setup must list the video add-on in `game/.godot/extension_list.cfg`** (`pup_setup.register_extension`):
+  Godot loads a GDExtension only once an editor import has listed it, so a game that is only run after the
+  copy has no `GoZenVideo` class and plays nothing (observed, LOTR 2026-11-21; the packaging kit's bundles already
+  do it, `mpf_godot/local.py`).
+- **Variant captures PinUP Player never reads**: packs carry `50a.bmp`, `63old.bmp`, `144Alternative.bmp`,
+  `D152.bmp` next to `<n>.bmp`; `D<n>` reads `<n>.bmp` only (inferred), so `pup_decode.py match` skips them and a
+  `D152` row with only `D152.bmp` never fires in Visual Pinball either. List them, map nothing to them. (LOTR)
+- **Whitestar (non-SAM) packs**: `W<n>` is PinMAME's sequential switch number, the same as the VPX table's and the
+  game's switch index (LOTR `rom_data/switches.csv`): map them by number, no matrix conversion. A game whose
+  display events carry a hex object id (LOTR `lotr_dmd_<hex>`) cannot use `pup_captures.py`'s checker, which
+  reads decimal ids from the event: match with `pup_decode.py match --id-regex` and keep the hand table. (LOTR)
+- **Variants from the object's parameters**: on Whitestar the game CPU sends the DMD object id with parameters, and
+  one object draws the member, ring type or mode named in them (LOTR 0x21 member picture, 0x33 ring type, 0xA7
+  mode title): post them as event arguments from the game's display call (LOTR `LotrOS.dmd(..., member=n)`) and
+  key the map on them (`lotr_dmd_33{ring_type==1}`). Captures of variants the reference frames never showed score
+  under 60 %: map them from the row's description and the object's parameters, marked inferred.
 - `D0` without `=1` is the start-up trigger too (Transformers row 246, the backglass overlay).
 - Events that reach the PuP side before Godot's player is ready must not fire rows: their `RestSeconds` would
   start counting for nothing (seen on Transformers: Ball Saved silenced for 10 s after Godot came up).
@@ -266,9 +286,10 @@ mp4s stay as they are (the platform's GoZen plays them). So the runtime's `pup_s
 | Game | Pack | Game with the pack | State |
 |---|---|---|---|
 | Tron Legacy LE 1.74 | `trn_174h`, by its author (credited in the game's README), private copy `Ashram56/Tron-LE-PuP-Pack` | [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) (the fork merged back 2026-10-10) | Built: three screens, OST, Windows / macOS / Linux / Jetson; zip option in setup and installers; not yet on `tools/pup/runtime/` |
+| Lord of the Rings (Whitestar) | `lotr_1.0.1` (author not named in the pack), installed by hand from its zip | Lord-of-the-rings-Decryption `game/` (private), `docs/pup/` | Built on `tools/pup/runtime/` 2026-11-21: backglass (2 + pop-ups 11, 12, 13, 17, 19), topper (0 + 14, 16, 18), DMD on black, ROM music; 89 of 138 capture codes mapped, members / crossed variants waiting on A's parameters |
 | Transformers Pro 1.80 | `tf_180` v1.0 by TerryRed, private copy `Ashram56/Transformers-PuP` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `claude/pup-pack` (in the game repo, not a fork) | Built on `tools/pup/runtime/`: backglass with its five overlay boxes, DMD in the pack's art, topper, the pack's music; every capture in use mapped, each variant checked against the ROM's animation tables; GoZen with d3d11va on Windows (1080p at 4.3 ms a frame, Ryzen 7 2700), Godot 4.6.3; seen running a Blackout battle on Windows |
 
-Keep this file current. Last updated 2026-10-27 (remote screens: Tron's remote topper on a Raspberry Pi; player behaviour moved to MPF-Godot-Packaging; before 2026-10-12: music preloaded on a worker; a video switch never waits for a worker; DMD sized in mm on bar panels, full size or with the background's action; before 2026-10-10: Tron's fork merged back into the game repo: build in the game repo, optional private pack in installers; before: variants from the ROM's animation tables, not the pack's row order; before: the runtime in `tools/pup/runtime/` with GoZen on Windows,
+Keep this file current. Last updated 2026-11-21 (T2: scaled frames and `--id-text` in the match, WPC lamp and solenoid terms; LOTR on Whitestar: the add-on in extension_list.cfg, variant captures, W numbers, variants from object parameters; before 2026-10-27: remote screens: Tron's remote topper on a Raspberry Pi; player behaviour moved to MPF-Godot-Packaging; before 2026-10-12: music preloaded on a worker; a video switch never waits for a worker; DMD sized in mm on bar panels, full size or with the background's action; before 2026-10-10: Tron's fork merged back into the game repo: build in the game repo, optional private pack in installers; before: variants from the ROM's animation tables, not the pack's row order; before: the runtime in `tools/pup/runtime/` with GoZen on Windows,
 conditions on arguments and the player's state, whole-frame captures, never convert; from the Transformers pack;
 before: Windows plays the pack through GoZen with GPU decoding, fork layout and sync lessons, the PuP Pack agent,
 the format page and `tools/pup/`, from the Tron work in Tron-Legacy-MPF-PuP and Tron-LE-PuP-Pack).
