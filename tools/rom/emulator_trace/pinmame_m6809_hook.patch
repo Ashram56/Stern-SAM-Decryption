@@ -1,0 +1,64 @@
+diff --git a/src/cpu/m6809/m6809.c b/src/cpu/m6809/m6809.c
+index 4768310..a9c70dd 100644
+--- a/src/cpu/m6809/m6809.c
++++ b/src/cpu/m6809/m6809.c
+@@ -138,6 +138,10 @@ typedef struct
+ /* 6809 registers */
+ static m6809_Regs m6809;
+ int m6809_slapstic = 0;
++/* T2 / WPC trace hook: called before every 6809 instruction (cpu = active cpu number). The hook may change registers. */
++void (*pinmame_m6809_hook)(int cpu, unsigned int pc) = 0;
++unsigned int pinmame_m6809_getreg(int r) { switch (r) { case 0: return m6809.pc.w.l; case 1: return m6809.s.w.l; case 2: return m6809.u.w.l; case 3: return m6809.x.w.l; case 4: return m6809.y.w.l; case 5: return m6809.d.w.l; case 6: return m6809.dp.b.h; case 7: return m6809.cc; } return 0; }
++void pinmame_m6809_setreg(int r, unsigned int v) { switch (r) { case 0: m6809.pc.w.l = v; break; case 1: m6809.s.w.l = v; break; case 2: m6809.u.w.l = v; break; case 3: m6809.x.w.l = v; break; case 4: m6809.y.w.l = v; break; case 5: m6809.d.w.l = v; break; case 6: m6809.dp.b.h = v; break; case 7: m6809.cc = v; break; } }
+ 
+ #define pPPC    m6809.ppc
+ #define pPC 	m6809.pc
+@@ -698,6 +702,7 @@ int m6809_execute(int cycles)	/* NS 970908 */
+ 	{
+ 		do
+ 		{
++			if (pinmame_m6809_hook) pinmame_m6809_hook(cpu_getactivecpu(), PCD);
+ 			pPPC = pPC;
+ 
+ 			CALL_MAME_DEBUG;
+diff --git a/src/libpinmame/libpinmame.cpp b/src/libpinmame/libpinmame.cpp
+index 7b56c96..e83d276 100644
+--- a/src/libpinmame/libpinmame.cpp
++++ b/src/libpinmame/libpinmame.cpp
+@@ -3842,3 +3842,22 @@ PINMAMEAPI PINMAME_STATUS PinmameSetGameDef(const uint8_t* game, size_t gameSize
+ 	}
+ 	return PINMAME_STATUS_OK;
+ }
++
++extern "C" {
++extern void (*pinmame_m6809_hook)(int cpu, unsigned int pc);
++unsigned int pinmame_m6809_getreg(int r);
++void pinmame_m6809_setreg(int r, unsigned int v);
++
++extern unsigned char *wpc_data; extern unsigned char *wpc_ram;
++extern int (*pinmame_wpc_write_hook)(int addr, int data);
++__attribute__((visibility("default"))) void PinmameSetWpcWriteHook(int (*h)(int, int)) { pinmame_wpc_write_hook = h; }
++__attribute__((visibility("default"))) void PinmameSetM6809Hook(void (*h)(int, unsigned int)) { pinmame_m6809_hook = h; }
++__attribute__((visibility("default"))) unsigned int PinmameM6809GetReg(int r) { return pinmame_m6809_getreg(r); }
++__attribute__((visibility("default"))) void PinmameM6809SetReg(int r, unsigned int v) { pinmame_m6809_setreg(r, v); }
++__attribute__((visibility("default"))) int PinmameM6809Read8(int a) { return cpu_readmem16(a) & 0xff; }
++__attribute__((visibility("default"))) void PinmameM6809Write8(int a, int d) { cpu_writemem16(a, d); }
++__attribute__((visibility("default"))) unsigned char *PinmameWpcRam(void) { return wpc_ram; }
++__attribute__((visibility("default"))) int PinmameWpcRomBank(void) { return wpc_data ? wpc_data[0x3ffc - 0x3fb0] : -1; }
++}
++extern "C" double timer_get_time(void);
++extern "C" __attribute__((visibility("default"))) double PinmameEmuTime() { return timer_get_time(); }
+diff --git a/src/wpc/wpc.c b/src/wpc/wpc.c
+index 8fb90d7..822aa7c 100644
+--- a/src/wpc/wpc.c
++++ b/src/wpc/wpc.c
+@@ -755,7 +755,9 @@ READ_HANDLER(wpc_r) {
+   return wpc_data[offset];
+ }
+ 
++int (*pinmame_wpc_write_hook)(int addr, int data) = 0; /* T2 trace: every WPC ASIC/IO write 0x3fb0-0x3fff */
+ WRITE_HANDLER(wpc_w) {
++  if (pinmame_wpc_write_hook && pinmame_wpc_write_hook(offset + WPC_BASE, data)) return; /* hook returns 1 to drop the write */
+ #ifdef PROC_SUPPORT
+   if (coreGlobals.p_rocEn) {
+     // process immediate coil changes for C01 to C28 and C37 to C40
