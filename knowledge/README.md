@@ -14,6 +14,7 @@ agent itself: [../agents/rom_extraction.md](../agents/rom_extraction.md).
 | [sam_hardware/](sam_hardware/README.md) | You need the SAM CPU to IO board bus, its timing, the lamp matrix, or any interface the CPU board drives (DMD, sound, switches, timers): same boards on every SAM game, measured with the Tron ROM. CSVs beside it. | ~15 min |
 | [sam_os_api.json](sam_os_api.json) | You name OS functions in a new ROM's decompile: 160 SAM OS functions with signatures, meaning and evidence (Tron LE 1.74 addresses; find each again with the ROM extraction agent's section 5.1). | grep it |
 | [pup_pack_format.md](pup_pack_format.md) | You play a PinUP Player pack (PuP Pack) with the MPF game: the pack's files, trigger codes and how each maps to a game event, how a DMD capture is matched. Tool: [../tools/pup/](../tools/pup/pup_decode.py); agent: [../agents/pup_pack.md](../agents/pup_pack.md). | ~6 min |
+| [wpc_6809.md](wpc_6809.md) | You apply the method to a 6809 game (Williams WPC; Whitestar similar): memory map, far calls and inline-argument wrappers, the OS registry, emulator gotchas, effect and sound injection. Measured on Terminator 2 L-8. | ~5 min |
 | [templates/](templates) | You write rules specs: one-file-per-feature template and the brief given to the Tron rules workers. | ~3 min |
 | [../tools/rom/](../tools/rom/README.md) | You extract a ROM: the Tron toolkit (emulator trace, Ghidra pipeline, table extractors, media exporters, bus tracer) and how to retarget it. | ~3 min |
 | [rom_decomp_feedback.md](rom_decomp_feedback.md) | You are the ROM extraction agent, or brief one. Dated record of what the Tron MPF build had to recover or guess, and the package defects it found. The instructions (what worked, what to deliver) are the ROM extraction agent's section 14. | ~4 min |
@@ -38,4 +39,4 @@ bios, 8 files) looks like and why the SAM tools do not apply as is.
 5. Run the checks instead of reasoning about them: `pytest -q tests` and `scripts/trace_check.py <scenario>`
    answer "does it match the ROM" faster than reading the trace.
 
-Last updated 2026-10-10 (moved here from Tron-Legacy-MPF `docs/handover/`; PuP Pack format added).
+Last updated 2026-11-21 (WPC / 6809 page added; earlier: moved here from Tron-Legacy-MPF `docs/handover/`, PuP Pack format).

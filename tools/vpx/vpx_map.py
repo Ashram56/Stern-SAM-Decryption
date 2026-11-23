@@ -77,8 +77,10 @@ def read_names(paths):
                 if m:
                     dev = m.group(1)
                     continue
-                m = re.match(r"^    number:\s*['\"]?(D?)(-?\d+)['\"]?", line)
-                if m and section in names and dev:      # D<n>: a SAM dedicated switch, numbered 128 + n
+                # D<n>: a SAM dedicated switch, numbered 128 + n. WPC configs prefix every number with its
+                # kind (S11, SD1 = dedicated, L11, C17, F<n>, G<n>): the letter is dropped, SD<n> is D<n>
+                m = re.match(r"^    number:\s*['\"]?(?:[SLCFG](?=D?\d))?(D?)(-?\d+)['\"]?", line)
+                if m and section in names and dev:
                     names[section].setdefault(int(m.group(2)) + (128 if m.group(1) else 0), dev)
     return names
 
@@ -188,9 +190,9 @@ def main(argv=None):
         add_sw(int(m.group(2)) % 100, m.group(1), "standup target")
     for m in re.finditer(r"\(\s*new\s+DropTarget\s*\)\s*\(\s*(\w+)\s*,\s*\w+\s*,\s*\w+\s*,\s*(\d+)", script, re.I):
         add_sw(int(m.group(2)) % 100, m.group(1), "drop target")
-    for m in re.finditer(r"\.InitDrop\s+Array\(([^)]*)\)\s*,\s*Array\(([^)]*)\)", script, re.I):
-        objs = [o.strip() for o in m.group(1).split(",")]
-        nums = [int(n) for n in re.findall(r"\d+", m.group(2))]
+    for m in re.finditer(r"\.InitDrop\s+Array\(([^)]*)\)\s*,\s*(?:Array\(([^)]*)\)|(\d+))", script, re.I):
+        objs = [o.strip() for o in m.group(1).split(",")]           # a single target: `Array(sw77), 77`
+        nums = [int(n) for n in re.findall(r"\d+", m.group(2) or m.group(3))]
         for o, n in zip(objs, nums):
             add_sw(n, o, "drop target")
     stacks = list(re.finditer(r"Set\s+(\w+)\s*=\s*New\s+(cvpmBallStack|cvpmTrough|cvpmSaucer)", script, re.I))
@@ -209,6 +211,11 @@ def main(argv=None):
             kick = exit_
         elif sw and kick:
             nums = [int(n) for n in sw.group(1).split(",")[1:] if n.strip() and int(n) != 0]
+            entry = int(sw.group(1).split(",")[0])      # the entry switch (outhole) sits on the object that
+            hit = re.search(r"^\s*Sub\s+(\w+?)_Hit\b[^\n]*?\b{}\.AddBall\b".format(m.group(1)),
+                            script, re.I | re.M)        # feeds the stack: `Sub Drain_Hit: bsTrough.AddBall Me`
+            if entry and hit:
+                add_sw(entry, hit.group(1), "ball stack {} entry".format(m.group(1)))
         else:
             continue
         for k, n in enumerate(nums):
@@ -235,6 +242,27 @@ def main(argv=None):
                 lamps.setdefault(it["timer_interval"], []).append(it["name"].lower())
     subs = {m.group(1).lower(): m.group(2) for m in
             re.finditer(r"^\s*Sub\s+(\w+)\b(.*?)\bEnd\s+Sub", script, re.I | re.M | re.S)}
+    def case_objects(body):
+        """{n: [objects]} from a `Select Case` body: each `Case n` block's `obj.State = ...` assignments."""
+        out, cur = {}, None
+        for line in re.split(r"[\r\n]+", body):
+            for part in line.split(":") if re.match(r"\s*Case\s+\d+\s*:", line, re.I) else [line]:
+                c = re.match(r"\s*Case\s+(\d+)\s*$", part, re.I) or re.match(r"\s*Case\s+(\d+)\b", part, re.I)
+                if c:
+                    cur = int(c.group(1))
+                    continue
+                if re.match(r"\s*(Case|End\s+Select)\b", part, re.I):
+                    cur = None
+                    continue
+                o = re.match(r"\s*(?:If\b.*\bThen\s+)?(\w+)\.(?:State|Image)\s*=", part, re.I)
+                if o and cur is not None:
+                    out.setdefault(cur, []).append(o.group(1).lower())
+        return out
+    # Lamps (tables with UseLamps=0): a timer reads Controller.ChangedLamps and sets objects in `Select Case`
+    for body in subs.values():
+        if re.search(r"Controller\.ChangedLamps", body, re.I):
+            for n, objs in case_objects(body).items():
+                lamps.setdefault(n, []).extend(objs)
     for m in re.finditer(r"Sol(?:Mod)?Callback\s*\(\s*(\d+)\s*\)\s*=\s*\"([^\"]*)\"", script, re.I):
         n, cb = int(m.group(1)), m.group(2).strip()
         f = re.match(r"vpmFlasher\s+(?:Array\s*\(([^)]*)\)|(\w+))", cb, re.I)
@@ -243,6 +271,10 @@ def main(argv=None):
         else:
             k = re.search(r"\b(?:Mod)?FlashFlasher\s*\(?\s*(\d+)", subs.get(cb.lower(), ""), re.I)
             objs = [p + k.group(1) for p in ("flasherlight", "flasherflash", "flasherbase")] if k else []
+            if not objs:                    # SolModCallback(n) = "UpdateFlasher n,": that sub's `Case n` block
+                c = re.match(r"(\w+)\s+(\d+)\s*,?$", cb)
+                if c and int(c.group(2)) == n:
+                    objs = case_objects(subs.get(c.group(1).lower(), "")).get(n, [])
         objs = [o for o in objs if o in by_name]
         if objs:
             flashers.setdefault(n, []).extend(objs[:1] if not f else objs)
@@ -338,7 +370,9 @@ def main(argv=None):
     print("{} lamps, {} flashers; lamp numbers with no object: {}".format(
         len(lamp_nums), len(li_rows) - len(lamp_nums), " ".join(map(str, missing)) or "none"))
     if args.names:
-        unnamed = [r["mpf_name"] for r in sw_rows + li_rows if re.match(r"[slf]_\d\d_", r["mpf_name"])]
+        known = {v for sec in names.values() for v in sec.values()}   # a config may itself use s_NN_ names
+        unnamed = [r["mpf_name"] for r in sw_rows + li_rows
+                   if re.match(r"[slf]_\d\d_", r["mpf_name"]) and r["mpf_name"] not in known]
         print("{} devices not in the config (placeholder names): {}".format(len(unnamed), " ".join(unnamed)))
     return 0
 
