@@ -14,7 +14,7 @@ the worked example. File paths in `code` are the Tron game repo's ([Tron-Legacy-
 
 ## 1. Scope
 
-**In** (all as the ROM does it, from the asset repo's specs, `rom_data/` and traces):
+**In** (all as the ROM does it, from the code: A's functional diagram, specs and `rom_data/`; traces only confirm):
 
 | Area | Includes |
 |---|---|
@@ -46,7 +46,8 @@ overlay, a model) and tells the packaging agent, which carries it to every insta
 ## 3. Definition of done
 
 - `tests/test_traces.py` (scenario → event kinds that match the reference trace) only ever gains kinds; a
-  feature is accepted when its scenario's trace matches (`scripts/trace_check.py <scenario>`).
+  feature is accepted when every rule cites its ROM routine (from A's functional diagram) **and** its scenario's
+  trace matches (`scripts/trace_check.py <scenario>`). A trace match alone does not accept a feature.
 - `pytest -q tests` green; `scripts/render_check.py` (no blank DMD); `scripts/render_diff.py` for display work
   (text pixel-exact against the reference captures); classic frames unchanged (pixel-hash tests).
 - Unit tests for paths no reference scenario reaches; RNG seeded in tests only.
@@ -55,6 +56,34 @@ overlay, a model) and tells the packaging agent, which carries it to every insta
   `rom_differences.md` with the ROM's behaviour and its address, and said to the owner.
 
 ## 4. Learned since the playbook (2026-10-04 to 2026-10-08)
+
+- **Attract, credits, parametric screens and lamps before the first owner test** (missed on three games; the
+  owner's first test finds them at once). Before handing over a playable build, check each:
+  1. **Attract is the ROM's own loop**, not one MPF slide: find the attract task's step table (each step: a
+     display object or deff, a wait in ticks, a condition such as an adjustment or "a game was played"), build it
+     step for step with its durations and conditions, and let the flippers step it as the ROM does. A test
+     asserts the order over two full cycles. LOTR: 22 steps at 61:42A1, 16.4 ms ticks, $027D stepped by the
+     flippers (`game/lotr/attract.py`).
+  2. **A coin must change what the player sees.** Find what the ROM shows after a coin (LOTR: INSERT COINS, then
+     the cycle restarts on the score screen 4.0 s after the last coin, which shows the credits) and test it: coin,
+     wait, the credit count is on the display. A credits screen captured once shows one credit count forever.
+  3. **A display object with parameters is not one capture.** If the DMD replays one capture per object, every
+     object whose look depends on its parameters (names picked by an index, values, ranks, credits) is wrong in
+     play (LOTR: the member award always showed ARAGORN, so the owner read it as "Aragorn is always collected"
+     although the rules collected the right member). List these objects from the parameter table, then ask A
+     for one render per discrete value and two renders per numeric object (or the field table: x, y, font,
+     alignment per parameter) in one request, and log the rest as a departure.
+  4. **Lamps from the code, not only the mode inserts.** Ask A for the lamp logic of every lamp (state by RAM
+     flag, the redraw routine, attract and event lamp shows) together with the rules; until then light each lamp
+     from the features' state and label it inferred. Drive lamps from a clock interval, not the game's delay
+     timers: an extra repeating game timer shifted the order of same-instant DMD objects in two trace windows
+     (LOTR).
+  Lamp traces read from the emulator's lamp matrix while it strobes see only part of the columns per sample (LOTR:
+     alternating 0x5 / 0xA nibbles): replayed raw they flicker at random. OR the samples over a window longer than
+     one strobe cycle (LOTR: 70 ms) before replaying or measuring a flash, and turn every lamp off when a game
+     starts so the attract show's lamps do not stay lit where no rule redraws them.
+  5. **Captures by injection start with the previous object's frames**: trim them (LOTR `gen_media.py
+     trim_carryover`: leading frames within 400 ms that match the previous object better than the object's own).
 
 - **Coin door open** (deff 4, priority 247, never ends by itself): "50V / 20V DISABLED" covers the display
   while the door is open, dims after 30 s; BACK takes it away (sound 0x009) instead of a service credit; the
@@ -121,6 +150,15 @@ Each line has the Transformers value as the example.
   random picks come from watched variables, or, when none is traced, from the scores and audits they cause
   (Transformers: mode-start relight picks from the mode-start score caller and shot audits). Ignore values that
   are uninitialised RAM (0xffff before the game starts).
+- **Pin every random pick in the trace replays, or the floor is noise.** A pick the reference never shows (no
+  mode started) still needs a fixed value in the runner; otherwise the regression floor moves from run to run
+  (LOTR: the first ring mode left to `random` swung one scenario's DMD matches between 2 and 3). When a rule's
+  random draws cannot be recovered from the trace (LOTR's ring type refill, fix 0xEE95), build the code's rule for
+  play and let the replay use a fixed, observed model behind a module flag; say so in rom_differences.md.
+- **Check a spec's condition polarity before coding it.** A condition read from a disassembled table can come out
+  inverted: LOTR's Palantir award 3 (ball saver, 58:5342) was specced "no multiball", but the branch after the
+  multiball test is `bcc` to the failure, so it needs one; the trace (a single ball gave award 8) settled it. When a
+  table of conditions is first-match, run the trace's case through it by hand and confirm the award it shows.
 - **Read the gate, not its name.** A decompile name can say the opposite of the code: `any_timed_mode_running`
   [0x01006704] tests the six multiball flags; the timed modes are [0x010067bc]. Ask A for the flag list behind
   every "multiball / timed mode" condition and check it against a trace where only one of them runs.
@@ -241,8 +279,54 @@ What the first Williams WPC game showed (Terminator 2 L-8, in its private game r
   and `S<n>` the solenoid, so the game posts `<game>_lamp_<n>` when a rule lights a lamp (not on the ball start
   redraw) and `<game>_coil_<n>` on a pulse ([pup_pack.md](pup_pack.md)).
 
-## 6. Status and open work per game
+## 6. A board other than SAM (from Lord of the Rings, Stern Whitestar 6809, 2026-11-21)
+
+What changed when C ran on a 6809 Whitestar game (Lord-of-the-rings-Decryption, `game/`), with no SAM OS to copy.
+Each line has the LOTR value as the example.
+
+- **Two switch numberings meet**: the emulator and the VPX table number switches by the 0-based position in the
+  ROM's name table (`Controller.Switch(28)` = BALROG HIT), A's scenarios by matrix number 10*column+row (45). Number
+  MPF switches as the VPX does and convert A's scenario numbers in the runner; write the rule once
+  (`lotr/hw.py`). Before believing a "the names are shifted" note, check the conversion (on LOTR the names were right).
+- **Rules come from the code, never from the traces.** Every rule C builds cites the ROM routine (bank:address) that
+  A decoded; a trace or a rulesheet only confirms it or gives a timing. If A has not decoded a feature yet, ask A for
+  it (one batched request) instead of rebuilding it from traces; a stopgap built from traces is labelled
+  provisional in the code and in `docs/rom_differences.md`, and replaced as soon as A delivers. When A's decompile
+  lands, audit every feature: list each rule still marked observed / inferred and get its routine. Before delivery,
+  decode the whole switch handler table and check that every switch and lamp rule is used (coverage test). On LOTR,
+  C built from traces first: the ORC lanes, the skill shot and the mystery weights were missed or guessed, and the
+  owner found them.
+- **Comparing with A's traces** (a check, not the source). Compare **per mark
+  window** (score total, DMD objects in order of first appearance, coils), not event by event: the ROM credits awards
+  up to 0.5-6 s after the switch and logs the switch up to 30 ms after scoring it, so open each window 0.1 s early
+  (`game/scripts/trace_check.py`). Replay A's scenario files with A's own time base (start at 30 s, commands from
+  40 s, hits 1 s apart) so both traces share the clock; prefer the latest `_runN` of a scenario.
+- **The display is objects with parameters, not deffs**: the game CPU sends `9B <id> <params>` and the DMD CPU draws.
+  A mode's running display is re-sent by the game: every 0.115 s while its value counts down, once after each
+  foreground object when static, and a foreground object holds the display ~2.35 s (observed on LOTR). Model it as
+  background providers ranked by priority, re-sent when the display is free (`LotrOS._bg_tick`).
+- **Read awards off the first switch of every trace.** A one-off award on the first switch of a ball showed in every
+  trace (LOTR: +100,000 when it is a scoop) and explained most single-window score gaps once removed from the shot values.
+- **Let the rules kick the scoops**: `auto_fire_on_unexpected_ball: false` on VUKs, saucers and locks, and the OS
+  layer ejects them after the ROM's hold time (from the coil time in the trace), so intros can hold the ball.
+- **Ball search timing feeds the mode timers**: measure "last switch -> search display" in every trace (LOTR 20-26 s,
+  not the 8 s first guessed) and let a held ball postpone it.
+- **Media before fonts**: A's per-object GIF captures (frames with their timing) give a playable DMD at once; the live
+  values wait for the fonts and the x/y of each text, logged as a departure until then.
+- **Read each mode's shots from the per-shot hook chains, not the rule sheet.** Every shot handler calls a fixed
+  list of far hooks, one per feature; the hooks that fall in a mode's handler range (from the mode table) are the
+  shots that mode uses, and a mode with one hook has one shot (LOTR: War of the Ents has only an eject hook, the
+  rule sheet's orbit values do not exist in 5.0 code; map in the game's `docs/rules/README.md`). Find the chains by
+  searching the ROM for far calls (`jsr far; addr; bank`) to the mode's addresses.
+- **Effect ids carry the DMD object.** Mode code rarely sends DMD or sound commands itself: it queues an effect id
+  whose table entry starts with the DMD object (LOTR: 61:75FE, 5 bytes: object, priority, flags, script). Reading the
+  first byte gives every mode display at once; the sounds then come from the traces by DMD object. A value passed
+  to that queue is not a sound command: check it against the traces before playing it.
+- Godot imports every CSV it finds as a translation, in MPF folders too (`monitor/`): `.gdignore` in every non-Godot
+  folder of the machine folder.
+
+## 7. Status and open work per game
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation"; Transformers: [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `README.md`).
 
-Last updated 2026-11-21 (section 5b: the first WPC 6809 game, Terminator 2, with phantom replay, award and key-loss lessons; before: section 5, what porting Transformers Pro 1.80 showed).
+Last updated 2026-11-22 (section 5b: the WPC sound_call priority test, a decompile review once the traces pass, the per-player play time, from Terminator 2; section 6: a Whitestar 6809 game, Lord of the Rings; mode shots from hook chains, effect ids; before: section 5b, the first WPC 6809 game, Terminator 2; section 5, what porting Transformers Pro 1.80 showed).
