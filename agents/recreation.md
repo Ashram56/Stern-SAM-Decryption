@@ -232,6 +232,29 @@ Each line has the Transformers value as the example.
 - Do not give a feature an attribute and a method of the same name: Python replaces the method silently and
   the hook dies with "int is not callable" deep in a scenario.
 
+## 5a. The rules test bench on Transformers Pro 1.80 (see 4b for the Tron bench)
+
+Build a bench early and make it the gate for every rules change (Transformers-MPF: `tests/bench/`, `scripts/bench.py`,
+`docs/test_bench.md`). What worked:
+
+- **Layers.** Per mode, from the rules spec, each with its ROM address in the docstring; game flow and several
+  players; a register of every operator adjustment where each one has a test or an explicit reason
+  (ROM-unused, not modelled, machine); the reference traces against a stored baseline (they must not match the
+  ROM less than today); seeded random games ("stress") with invariants checked after every action. Stress found
+  more bugs than the hand written tests (137 games: the last two failures were ball-count races).
+- **Run on MPF's `smart_virtual` platform**, no ROM, no Godot: the bench plays the ball (drain, plunge, lock,
+  shoot a switch) and checks a census (balls in the trough, shooter lane, devices, playfield) against
+  `game.balls_in_play` once nothing is in transit. A failing seed prints its last actions and replays.
+- **Per-player state.** Stern keeps a per-player game flag table (Transformers [0x040cf458], saved and restored at
+  each player change); read it from the ROM instead of guessing which flags belong to the player.
+- **Ball counting.** MPF caps `game.balls_in_play` at `ball_controller.num_balls_known`: an increment made while
+  every ball is already in play is silently lost (a "capped by num_balls_known" warning), so a replacement ball
+  that cannot be served yet (outlane save with all balls rolling) must be counted when it is served, not when it
+  is announced. A ball a device keeps (a lock) leaves the count at once when no ball can be served after it.
+- **Game-agnostic MPF pitfalls hit** (details belong in MPF-Godot-Packaging): BallHold default reset events,
+  `add_ball` queued until the next drain, `balls_in_play = 1` set after `ball_starting`, ball start waiting for an
+  empty playfield.
+
 ## 5b. A WPC 6809 game (from Terminator 2 L-8)
 
 What the first Williams WPC game showed (Terminator 2 L-8, in its private game repository, 2026-11-21). The OS facts are in
@@ -365,4 +388,4 @@ Each line has the LOTR value as the example.
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation"; Transformers: [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `README.md`).
 
-Last updated 2026-11-23 (section 4b: the rules test bench, from Tron; section 5b: the WPC sound_call priority test, a decompile review once the traces pass, the per-player play time, from Terminator 2; section 6: a Whitestar 6809 game, Lord of the Rings; mode shots from hook chains, effect ids; before: section 5b, the first WPC 6809 game, Terminator 2; section 5, what porting Transformers Pro 1.80 showed).
+Last updated 2026-11-23 (sections 4b and 5a: the rules test benches of Tron and Transformers; section 5b: the WPC sound_call priority test, a decompile review once the traces pass, the per-player play time, from Terminator 2; section 6: a Whitestar 6809 game, Lord of the Rings; mode shots from hook chains, effect ids; before: section 5b, the first WPC 6809 game, Terminator 2; section 5, what porting Transformers Pro 1.80 showed).
