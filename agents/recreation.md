@@ -51,6 +51,7 @@ overlay, a model) and tells the packaging agent, which carries it to every insta
 - `pytest -q tests` green; `scripts/render_check.py` (no blank DMD); `scripts/render_diff.py` for display work
   (text pixel-exact against the reference captures); classic frames unchanged (pixel-hash tests).
 - Unit tests for paths no reference scenario reaches; RNG seeded in tests only.
+- The rules test bench (section 4b) green: modes one by one, adjustments in play, random games.
 - No unreachable ROM code built (the asset repo lists dead code).
 - Where MPF cannot do what the ROM does, the smallest departure that keeps the player's experience, logged in
   `rom_differences.md` with the ROM's behaviour and its address, and said to the owner.
@@ -109,6 +110,41 @@ overlay, a model) and tells the packaging agent, which carries it to every insta
 - **Answers that matched the ROM** (check before "fixing"): Disc Multiball "JACKPOT" screen on every blue
   shot; Sea of Simulation stages played by their shots pay the shot value, not the stage million. Both are
   in `rom_differences.md`; future owner reports may be the same kind.
+
+## 4b. The rules test bench (from Tron, 2026-11-15)
+
+Trace tests prove the game against what the ROM was recorded doing; unit tests prove one function. Neither
+plays the game. Build a **bench** once the modes exist and run it before and after every rules change (Tron:
+`tests/bench/`, `scripts/bench.py`, [test_bench.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/test_bench.md)).
+On Tron it found five bugs that 440 tests and 30 trace scenarios had not.
+
+| Piece | What it is | Why |
+|---|---|---|
+| A physical table model | The machine's real balls, each in one place (trough, shooter lane, VUK, playfield), moved only by a coil or the player. MPF on its plain `virtual` platform, coils patched to move the balls. | MPF's `smart_virtual` moves balls by itself and hides every ball-count bug: a ball the rules count must be one the table holds. |
+| A player robot | START, plunger, flippers, tilt bob, and the ball sent to a shot, the scoop or the drain; it cannot close a switch with no ball on the playfield. `start_<mode>()` helpers reach each mode through the switches. | Tests written as a player plays read like the spec and reach the states a player reaches. |
+| Invariants after every action | Ball count on the table, scores never down, nothing scored while tilted, which modes may run together, value ranges, rules' balls in play = balls out of the trough once still, nothing of the last ball left at a new ball, all balls home at game over. | A corner case shows as a broken invariant long before anyone writes the test that names it. |
+| Mode by mode | One test file per group of modes, each test written from the spec's trigger / condition / score / display / sound table. | The exhaustive review: every line of the spec is either asserted or found wrong. |
+| Adjustments in play | Each adjustment set through the service menu with the door buttons, then a game played to see its effect; a table lists every adjustment as played or why not. | Writing `adj[n]` and calling the rule's function does not prove the menu's value reaches the game. |
+| Stress | A seeded random player (shots, dirty shots, drains, tilts, extra players, waits) over whole games, the modes started in every order, each multiball after and before the others, all balls draining at once, a tilt in every multiball. A failure prints its seed and last actions. | Finds the interleavings nobody thinks of. Run hundreds of seeds once ("soak"), a few in the normal run. |
+
+Lessons:
+
+- **Check a "bug" against the decompile before fixing it.** About ten of the bench's first failures were the
+  ROM's own behaviour (Tron: `task_kill(0, 0x100)` at the end of ball *keeps* the tasks with flag 0x100, so the
+  combo windows survive it; two modes starting on one scoop entry; a hit that only resumes a multiball). The
+  mask argument of `task_kill` is a keep mask. [SAM, code]
+- **Specs have arithmetic and wording slips**: when the spec and the game disagree, read the address the
+  spec cites (Tron: a weight total of 352 whose own table adds up to 327; two specs disagreeing on which
+  switches validate the playfield). Report them to the asset repo. [observed]
+- **The robot must not do what no ball does**: draining a ball before MPF has counted it on the playfield
+  (MPF takes it for a failed eject and ejects again, for ever), or draining every ball while the multiball
+  task still launches. Both look like game hangs and are bench bugs. [observed]
+- **Fixes move trace times**: run the trace tests after every fix the bench suggests (Tron: a shorter
+  shooter lane count delay made every auto-launch 0.4 s early; the waits before it took the 0.4 s). [observed]
+- **Game states the traces never visit** are where the bugs were: a tilt between a multiball's start and the
+  launch of its balls, a ball plunged at once, a game restarted with a ball in play (the ROM's "game
+  starting" state 0x20 was missing, so switches ran on a player with no data), the match with its
+  adjustment OFF. Play each OS adjustment at its extreme values. [observed]
 
 ## 5. Starting a second game (from Transformers Pro 1.80)
 
@@ -329,4 +365,4 @@ Each line has the LOTR value as the example.
 
 On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md), "C, strict recreation"; Transformers: [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `README.md`).
 
-Last updated 2026-11-22 (section 5b: the WPC sound_call priority test, a decompile review once the traces pass, the per-player play time, from Terminator 2; section 6: a Whitestar 6809 game, Lord of the Rings; mode shots from hook chains, effect ids; before: section 5b, the first WPC 6809 game, Terminator 2; section 5, what porting Transformers Pro 1.80 showed).
+Last updated 2026-11-23 (section 4b: the rules test bench, from Tron; section 5b: the WPC sound_call priority test, a decompile review once the traces pass, the per-player play time, from Terminator 2; section 6: a Whitestar 6809 game, Lord of the Rings; mode shots from hook chains, effect ids; before: section 5b, the first WPC 6809 game, Terminator 2; section 5, what porting Transformers Pro 1.80 showed).
