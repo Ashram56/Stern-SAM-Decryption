@@ -69,8 +69,10 @@ def holds(conds, kwargs):
 
 class Engine:
 
-    def __init__(self, triggers, trigger_map, send, now):
-        """triggers: pupfiles.Trigger rows; send(command dict); now() -> seconds."""
+    def __init__(self, triggers, trigger_map, send, now, enable=()):
+        """triggers: pupfiles.Trigger rows; send(command dict); now() -> seconds; enable: row IDs used even when
+        the pack leaves them inactive (Active 0), such as its music rows ([pup] music_rows, pup_runtime/mode.py)."""
+        enable = {int(i) for i in enable}
         self.send, self.now = send, now
         self.events = {}            # event name -> [(conditions, Trigger)]
         self.switches = {}          # switch name -> [Trigger]
@@ -83,7 +85,7 @@ class Engine:
             for reset in resets:
                 self.resets.setdefault(reset, []).append(name)
         for row in triggers:
-            if not row.active or not row.terms or row.screen is None:
+            if not (row.active or row.id in enable) or not row.terms or row.screen is None:
                 continue
             self._bind(row, trigger_map)
 
@@ -139,5 +141,5 @@ class Engine:
         return sorted(set(self.events) | set(self.counted) | set(self.resets))
 
 
-def build(pack_dir, map_path, send, now):
-    return Engine(pupfiles.load_triggers(pack_dir), load_map(map_path), send, now)
+def build(pack_dir, map_path, send, now, enable=()):
+    return Engine(pupfiles.load_triggers(pack_dir), load_map(map_path), send, now, enable)

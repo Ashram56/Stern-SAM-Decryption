@@ -148,13 +148,18 @@ def capture(data):
 
 
 def frames(path):
-    """Lit-dot bit sets of every 128x32 frame of a GIF/PNG (an animation gives one per frame)."""
+    """Lit-dot bit sets of every 128x32 frame of a GIF/PNG (an animation gives one per frame). A capture scaled by
+    a whole factor (T2's 256x64 GIFs) is brought back to 128x32, one sample per dot."""
     from PIL import Image, ImageSequence
     image = Image.open(path)
-    if image.size != (W, H):
+    w, h = image.size
+    if w % W or h % H or w // W != h // H:
         return
     for frame in ImageSequence.Iterator(image):
-        yield bits(pixels(frame.convert("L")), lambda v: v >= LIT)
+        frame = frame.convert("L")
+        if (w, h) != (W, H):
+            frame = frame.resize((W, H), Image.NEAREST)
+        yield bits(pixels(frame), lambda v: v >= LIT)
 
 
 def score(frame, cap):
@@ -218,7 +223,14 @@ def decode(pack):
 
 # ------------------------------------------------------------------ match
 
+KEEP_ID_TEXT = False
+
+
 def effect_id(text):
+    """The effect id from a frame's path: a number (Tron's deff_25), or the text as it is with --id-text (T2's
+    hex ids, deff04: a number would lose the leading zero and the hex)."""
+    if KEEP_ID_TEXT:
+        return str(text)
     return int(text) if str(text).isdigit() else str(text)
 
 
@@ -286,8 +298,12 @@ def main(argv=None):
     m.add_argument("--owners", help="CSV with columns pattern,id: frames whose path matches also belong to id")
     m.add_argument("--event", default="deff_{id}", help="event name for an effect id, for --map")
     m.add_argument("--map", help="also write a starting trigger map (YAML) here")
+    m.add_argument("--id-text", action="store_true",
+                   help="keep the id as matched (hex, leading zeros: T2's deff04 -> t2_deff_04), not as a number")
     args = p.parse_args(argv)
     pack = Pack(args.pack)
+    global KEEP_ID_TEXT
+    KEEP_ID_TEXT = bool(getattr(args, "id_text", False))
     if args.cmd == "decode":
         data = decode(pack)
         with open(args.out, "w", encoding="utf-8") as f:
