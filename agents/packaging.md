@@ -115,6 +115,10 @@ soon as the game repo exists:
 
 1. Copy `scripts/toolchain.py`, `setup.py`, `run.py`, `fsutil.py`, `gmc_patch.py`, `scripts/install/`, the
    wrappers, `docker/`, the CI workflow and `tests/test_install.py` / `test_toolchain.py`.
+   `gmc_patch.py` must also accept the GMC that a platform image provides (MPF-Godot-Packaging, `platform_addons: ["mpf-gmc"]`):
+   it carries the same fixes under the tag `# mpf-godot fix`, so a file with that tag counts as patched (Transformers
+   `PLATFORM_TAGS`, `scripts/gmc_patch.py`); else run.py stops with "unexpected scripts/bcp_server.gd". A bundle without
+   GMC needs a Godot re-import after the platform installs it (Godot's class cache is empty otherwise): the platform loader does it.
 2. Rename, in one block at the top of each installer: the environment prefix, repository URL, default
    branch, install folder name (`~/Tron-Legacy-MPF`), the assets repository (or drop that check when there
    is none), the banner text, the short-path hint (`C:\tron`), the Docker image and service names, the COM
@@ -296,6 +300,11 @@ nothing in it but the platform image. The rules the builder enforces, kept here 
   validates and writes it lets a web page configure the game without knowing its files; keep secrets write-only.
 - **The PuP Pack stays out** (the author's zip, installed by the game's own step, `pup_setup.py --pup-zip`, declared in `bundle.json` `pup.install`); its install
   needs ffmpeg with libtheora even when the videos are not converted (Tron's `gen_pup.py` looks for it first).
+- **The game's PuP step must keep the platform's GoZen.** With `platform_addons: ["gde_gozen"]` the platform puts its GoZen build in
+  `game/addons/gde_gozen`; a `pup_setup.py` that only trusts `pup_addons/gde_gozen` in the game's repository deleted it and converted every video to
+  Theora (256 videos, about an hour, no hardware decoding; Transformers on an Intel N100 mini PC, 2026-10-28). `tools/pup/runtime/scripts/pup_setup.py`
+  now keeps an installed `game/addons/gde_gozen/gozen.gdextension` (`platform_gozen()`). The platform also passes the game its venv under the
+  name the game declares in `requires.env` (a name ending in `VENV`); a game's toolchain should read that name and `MPF_GAME_VENV`.
 
 Checked on a PC only (Tron, 2026-10-24); the arm64 bundle on a real Pi 4 or Jetson is the next test.
 
@@ -303,3 +312,22 @@ On each game's page (Tron: [Tron-Legacy-MPF `docs/agents/README.md`](https://git
 
 Keep this file current with every installer change and owner test. Last updated 2026-10-29 (the platform holds no game: the game provides a complete package and its description, section 5c; 2026-10-27: setup.py --scorbit; 5b, signed Raspberry Pi image design facts; prebuilt bundles, section 5c; Jetson and Pi 4 sections moved to MPF-Godot-Packaging; before 2026-10-25: Raspberry Pi 4, 5d: Godot's EGL fix for the separate render thread, one window to keep the page flip, vsync rounding and a 30 fps cap, D: building off the board; the bcm2835-codec STREAMOFF bug and its module fix, hardware decoding keyed to one board, video lag in every comparison; 2026-10-24: section 5d, the checks before promising a frame rate, the V4L2 decoder and zero-copy, Mesa v3d, sound and screens; before 2026-10-22: macOS CI: no system git config in the token test; the game-agnostic kit in MPF-Godot-Packaging; Xavier NX power modes and hitches, submodules on a reused board; before 2026-10-10: untracked Godot .uid files before the update's pull; PuP fork merged into Tron's game repo; the full README in the definition of done; optional private pack repository; main as default branch; GoZen on Windows; token paste on Windows, tags from cloud sessions, patches from the board; Jetson doc paths;
 before: moved to Stern-SAM-Decryption; Tron status to the Tron game page; PuP Pack zip option).
+
+## Test a prebuilt bundle before it goes to a machine (lessons of Transformers, 2026-10-28)
+
+A bundle built on a PC and first started on the cabinet failed four times in a row (launcher options it does not take,
+the venv not passed, the platform's GoZen deleted and 256 clips converted, media regenerated without the ROM's frames,
+GMC not shipped). All of it shows on any x86 Linux box with no GPU; run it before sending:
+
+1. Build with `scripts/package/build_bundle.py`; check the archive's sha256 and `xz -t`.
+2. Install it with the platform loader's own function (`mpf_games.install_game`) into a scratch games folder, with the
+   platform's add-ons folder (`MPF_PLATFORM_DIR`): this is what the cabinet does, including `override.cfg`, GoZen, GMC and
+   the Godot re-import that rebuilds the class cache.
+3. Start `scripts/run.py` from the installed folder under `xvfb-run` with the venv and Godot the board would set
+   (`GODOT`, `MPF_GAME_VENV`, a `*_VENV` the bundle names in `requires.env`); expect GMC connected, the attract deff event and no
+   `SCRIPT ERROR` in `game/logs/godot.log` (Vulkan and ALSA errors are the sandbox).
+4. A bundle detects itself by `bundle.json` (the media are never regenerated, the ROM's frames are not in it); it never
+   embeds GMC or GoZen when the platform provides them (`platform_addons`).
+5. Ship every file of the media fingerprint (`toolchain.MEDIA_INPUTS`: Transformers needed `mpf_names.json`, `fonts.json`,
+   `dmd/images.csv` in `bundle_spec.json` `copy`), then check in the unpacked bundle that `game/media/.generated` equals
+   `media_fingerprint()`. A bundle that only skips the check (`bundle.json` present) hides the gap.
