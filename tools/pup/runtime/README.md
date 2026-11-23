@@ -55,6 +55,7 @@ INI with JSON values (Godot's ConfigFile reads the same file). Transformers-MPF'
 | `[pup] windows`, `optional`, `third_screen` | the windows in stack order; `optional` ones (a topper) follow `third_screen` |
 | `[pup] music_screen`, `ost_music` | the pack's music screen (no window; Tron 15, Transformers 4); false keeps the ROM music |
 | `[pup] pack_dir`, `media_dir`, `submodule`, `pack_repo`, `trigger_map` | where things are (repository root; `trigger_map` from `game/`) |
+| `[pup] music_rows` | trigger row IDs used even though the pack leaves them inactive (Active 0), only with `ost_music`: a pack that ships its music switched off (Terminator 2: rows 123 / 124 and screen 4 off) |
 | `[pup] bridge` | machine attribute path to the game's media bridge (`sound(call, index)`, `music_key`, `data["pools"]`), whose music calls are dropped while the pack's music plays |
 | `[pup] state` | machine attribute path to the current player's rule state, given to every event as `state` |
 | `[pup] attract_mode`, `attract_cycle_seconds` | `pup_attract_cycle` every so often while attract runs |

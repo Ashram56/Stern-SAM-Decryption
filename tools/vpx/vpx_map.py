@@ -230,6 +230,9 @@ def main(argv=None):
                            (r"ModLampz\.MassAssign\s*\(\s*(\d+)\s*\)\s*=\s*(\w+)", flashers)):
         for m in re.finditer(pattern, script, re.I):
             table.setdefault(int(m.group(1)), []).append(m.group(2).lower())
+    # JP's fading tables (older tables, UseLamps = 0): `Lamp 12, l12` lines in UpdateLamps give the lamp number and its object.
+    for m in re.finditer(r"^\s*Lamp\s+(\d+)\s*,\s*(\w+)\s*(?:'.*)?$", script, re.I | re.M):
+        lamps.setdefault(int(m.group(1)), []).append(m.group(2).lower())
     collections = {k.lower(): {n.lower() for n in v} for k, v in data.get("collections", {}).items()}
     for m in re.finditer(r"^\s*vpmMapLights\s+(\w+)", script, re.I | re.M):
         members = collections.get(m.group(1).lower())        # None: an older items.json, take every Light

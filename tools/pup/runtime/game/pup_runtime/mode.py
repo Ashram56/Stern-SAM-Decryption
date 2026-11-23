@@ -43,7 +43,9 @@ class PupMode(Mode):
             return
         pack = settings.pack_dir(self.cfg)
         try:
-            self.engine = engine.build(pack, settings.map_path(self.cfg), self.send, self.machine.clock.get_time)
+            music_rows = self.pup.get("music_rows", []) if self.pup.get("ost_music", True) else []
+            self.engine = engine.build(pack, settings.map_path(self.cfg), self.send, self.machine.clock.get_time,
+                                       music_rows)
         except FileNotFoundError as e:
             log.warning("PuP Pack not found (%s): no PuP", e)
             return

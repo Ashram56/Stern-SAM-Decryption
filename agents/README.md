@@ -104,8 +104,8 @@ ROM ──► A ROM extraction ──► C strict recreation ──► E improve
 
 1. **A and B in parallel.** They need nothing from each other; B only borrows A's MPF config for device names
    (without it B writes placeholder names that carry the numbers, which C renames).
-2. **C** starts when A has delivered the IO tables, sounds and DMD frames; rules features follow A's specs
-   and traces mode by mode. C feeds missing-data requests back to A (Tron: [rom_decomp_feedback.md](../knowledge/rom_decomp_feedback.md)).
+2. **C** starts when A has delivered the IO tables, sounds and DMD frames; rules features follow A's functional
+   diagram and specs, read from the code (rom_extraction.md rule 22), mode by mode; traces only confirm. C feeds missing-data requests back to A (Tron: [rom_decomp_feedback.md](../knowledge/rom_decomp_feedback.md)).
 3. **F** as soon as C's repo boots MPF + GMC (C's toolchain step): it ports the whole install and run kit at
    once, so the owner can install and test from the first playable build. F runs again whenever C, D or E add
    an option (P-ROC, VPX set-up, display modes), so each one reaches every installer and platform.
@@ -173,6 +173,7 @@ Each line means the file in `agents/` of Ashram56/Stern-SAM-Decryption.
 | Tron Legacy LE 1.74 / Pro 1.74 (worked example) | [Tron-Legacy-LE-ROM-Decryption](https://github.com/Ashram56/Tron-Legacy-LE-ROM-Decryption) | [Tron-Legacy-MPF](https://github.com/Ashram56/Tron-Legacy-MPF) | [docs/agents/README.md](https://github.com/Ashram56/Tron-Legacy-MPF/blob/main/docs/agents/README.md) |
 | Terminator 2 L-8 (Williams WPC, 6809; see knowledge/wpc_6809.md) | Terminator-2-Decryption (private) | not started | `CLAUDE.md` and `README.md` there |
 | Transformers Pro 1.80 | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) `rom/` | [Transformers-MPF](https://github.com/Ashram56/Transformers-MPF) | `CLAUDE.md` and `README.md` there |
+| Lord of the Rings (Stern Whitestar 6809, not SAM) | Lord-of-the-rings-Decryption (private) | same repository, `game/` | `docs/agents_plan.md` there |
 
 Add a row when a new game starts. Last updated 2026-10-10 (agent G, PuP Pack; contribution rule: CONTRIBUTING.md; moved here from Tron-Legacy-MPF with the knowledge
 base and the ROM extraction agent).

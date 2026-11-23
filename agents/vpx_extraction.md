@@ -244,4 +244,12 @@ are 11-88). A topper lamp (T2's 52, a primitive at 0, 0) lands in the top-left c
 - 2026-11-21: first WPC table (Terminator 2): `ChangedLamps` Select Case lamps, `UpdateFlasher n,` flashers, trough
   entry at its `AddBall` object, single `InitDrop`, WPC `S/L/C` number prefixes in `--names`.
 
-Last updated 2026-11-21 (WPC tables, Terminator 2).
+### Older Whitestar/6809 tables (Lord of the Rings 2003, verified 2026-11-21)
+
+`jpsalas v7` has `UseLamps = 0`, no `vpmMapLights` and no `Lampz`: its lamps are `Lamp 12, l12` lines in `UpdateLamps` (JP's fading code), so
+`vpx_map.py` also reads `^Lamp N, object` lines (96 lamps found). Its flashers are `SolCallback(n) = "vpmFlasher ..."` (found as before). The switches
+`Controller.Switch(n)`: **n is the 0-based position index of the switch in the ROM's switch name table** (not `10*column + row`): the ROM's own switch-test flowchart texts
+(`-BASH-SW 28`, `-TROUGH-SW 48`, `-SPINNER-SW 52`) use the same numbers, and all 60 placed switches matched names generated that way. Lamps and solenoids: index + 1.
+Bounds 0, 0, 952, 2190; playfield `pf` 2600x5982; 105 images, 678 items, 13 collections, script 1,100 lines; 60 switches, 96 lamps, 8 flashers.
+
+Last updated 2026-11-23 (WPC tables, Terminator 2; Whitestar 6809 tables, Lord of the Rings).

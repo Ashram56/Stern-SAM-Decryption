@@ -145,6 +145,15 @@ the same day).
     captures on Transformers (33 effects per emulator run) came back empty for 25 effects that had rendered
     before; re-running them 4 per run recovered 21. Compare pages and frames per effect, merge per effect
     (keep the better capture), and say which effects kept the older one.
+22. **Deliver the functional diagram from the code before C codes the rules.** Once the decompile reads, map the
+    whole game in one delivery, every node named by its ROM address: each switch handler and the shot chain it
+    calls, every task (who starts, kills and tests it), each mode's state machine (start, values, end, effects),
+    the game flow (coins and credits, start, ball start, end of ball, bonus, extra ball, match, game over, tilt),
+    music and lamp effects by state, and the voice cues; machine-readable tables first (`switch_flow.csv`,
+    `tasks.csv`, `cue_sites.csv`), a `game_flow.md` over them. C then codes node by node from it and never from
+    traces; traces and rulesheets only confirm. On Lord of the Rings C built from traces before this existed, and
+    the owner found a dozen wrong or missing rules (souls, member collection, credits screen, coin sound, music);
+    Terminator 2 did the diagram first.
 
 ---
 
@@ -768,6 +777,17 @@ How the full rules came out (21 feature specs, about 60 reference traces):
    code that reads it.
 8. **Ball save hides drains.** A scenario that tests end of ball must wait out the ball save or turn it off;
    otherwise the drain re-serves the ball and the trace shows no bonus.
+9. **Audit the rules against every effect start site, not against the traces.** Scan the ROM for every call
+   that starts a display effect, a lamp effect or a sound (the inline wrappers and the direct calls), list them
+   by id with their routine, and check that each id is either in a spec or listed as dead code. On Terminator 2
+   (WPC) the game built from 30 traces never played 15 display effects the rules code starts: no scenario
+   reached them, so nothing looked wrong. A full listing of the rules bank from every entry point (switch
+   table, hooks, effect tables, far calls, task creations) found them in minutes.
+10. **Scenarios must follow the ball's real path through every device.** T2's scenarios put the ball straight
+   into the gun (switch 31); on the machine it first drops into the popper behind the drop target (switch 76),
+   whose handler holds a whole sequence ("N TARGETS FOR MULTIBALL", the jackpot relight). Take the device
+   numbers from the switch table's argument byte, not from a guess: T2's device 4 was labelled "gun" and is the
+   popper. A feature audit name (POPPER SHOTS, GUN LOADED) settles it.
 
 The project owner's correction is worth remembering: Flynn's Arcade, which code text suggested was a
 video mode, is a **mystery award**. Ask the owner when the domain knowledge is theirs.

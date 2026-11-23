@@ -76,6 +76,12 @@ def native_video(os_name=None):
     return tc.host_os(os_name) in ("windows", "macos") and godot >= NATIVE_MIN_GODOT and os.path.isdir(NATIVE_SRC)
 
 
+def platform_gozen():
+    """True when game/addons/gde_gozen is already there with its extension file: a prebuilt bundle's `platform_addons`
+    (the platform installs its own GoZen build, none is kept in the game's repository). It is kept, not removed."""
+    return os.path.isfile(os.path.join(GOZEN_DST, "gozen.gdextension"))
+
+
 def gozen(os_name=None, arch=None):
     """True where the PuP plays the pack's mp4s with GDE GoZen (Linux x86_64 and arm64: FFmpeg, with the Jetson's
     hardware decoder when libnvmpi is installed, see pup_addons/gde_gozen/README.md). <env>_GOZEN=0 converts
@@ -84,19 +90,39 @@ def gozen(os_name=None, arch=None):
         return False
     host, cpu = tc.host_os(os_name), tc.host_arch(arch)
     return ((host == "linux" and cpu in ("x86_64", "arm64")) or (host == "windows" and cpu == "x86_64")) \
-        and os.path.isdir(GOZEN_SRC)
+        and (os.path.isdir(GOZEN_SRC) or platform_gozen())
+
+
+def register_extension(addon_dir):
+    """Lists the add-on's .gdextension in game/.godot/extension_list.cfg. Godot loads a GDExtension only once an
+    editor import has listed it there: a game that is only run (never opened in the editor) after the add-on is
+    copied finds no GoZenVideo / NativeVideoStream class and falls back to Theora (observed, LOTR 2026-11-21)."""
+    lst = os.path.join(tc.GAME, ".godot", "extension_list.cfg")
+    have = open(lst, encoding="utf-8").read().split() if os.path.exists(lst) else []
+    new = ["res://addons/{}/{}".format(os.path.basename(addon_dir), f) for f in sorted(os.listdir(addon_dir))
+           if f.endswith(".gdextension")]
+    new = [line for line in new if line not in have]
+    if new:
+        os.makedirs(os.path.dirname(lst), exist_ok=True)
+        with open(lst, "w", encoding="utf-8", newline="\n") as f:
+            f.write("".join(line + "\n" for line in have + new))
 
 
 def install_native_video():
     """Copies pup_addons/native_video (the build with the gdzig heap fix, see its FIX.md) to game/addons/."""
     say("   native_video add-on -> game/addons/native_video (the pack's mp4s play without conversion)")
     fsutil.copy_tree(NATIVE_SRC, NATIVE_DST)
+    register_extension(NATIVE_DST)
 
 
 def install_gozen():
     """Copies pup_addons/gde_gozen (GoZen built for this repo, see its README.md) to game/addons/."""
+    if not os.path.isdir(GOZEN_SRC):
+        say("   GDE GoZen add-on: the platform's, already in game/addons/gde_gozen (the pack's mp4s play without conversion)")
+        return
     say("   GDE GoZen add-on -> game/addons/gde_gozen (the pack's mp4s play without conversion)")
     fsutil.copy_tree(GOZEN_SRC, GOZEN_DST)
+    register_extension(GOZEN_DST)
 
 
 def say(text):
