@@ -204,7 +204,15 @@ Each line has the LOTR value as the example.
   ROM's name table (`Controller.Switch(28)` = BALROG HIT), A's scenarios by matrix number 10*column+row (45). Number
   MPF switches as the VPX does and convert A's scenario numbers in the runner; write the rule once
   (`lotr/hw.py`). Before believing a "the names are shifted" note, check the conversion (on LOTR the names were right).
-- **No decompiled OS yet: rebuild the rules from the traces.** With only A's raw scenario traces, compare **per mark
+- **Rules come from the code, never from the traces.** Every rule C builds cites the ROM routine (bank:address) that
+  A decoded; a trace or a rulesheet only confirms it or gives a timing. If A has not decoded a feature yet, ask A for
+  it (one batched request) instead of rebuilding it from traces; a stopgap built from traces is labelled
+  provisional in the code and in `docs/rom_differences.md`, and replaced as soon as A delivers. When A's decompile
+  lands, audit every feature: list each rule still marked observed / inferred and get its routine. Before delivery,
+  decode the whole switch handler table and check that every switch and lamp rule is used (coverage test). On LOTR,
+  C built from traces first: the ORC lanes, the skill shot and the mystery weights were missed or guessed, and the
+  owner found them.
+- **Comparing with A's traces** (a check, not the source). Compare **per mark
   window** (score total, DMD objects in order of first appearance, coils), not event by event: the ROM credits awards
   up to 0.5-6 s after the switch and logs the switch up to 30 ms after scoring it, so open each window 0.1 s early
   (`game/scripts/trace_check.py`). Replay A's scenario files with A's own time base (start at 30 s, commands from
