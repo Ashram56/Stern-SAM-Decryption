@@ -95,3 +95,8 @@ libpinmame plus a patched PinMAME core (RAM-write, solenoid-write and DMD-packet
   fast. The boot sums the whole ROM first (about 700 ticks). A pure-Python 6809 core (`pip install MC6809`) runs the
   board at about 2x real time: LOTR's `game/lotr/dmd/cpu_board.py` (private repo) feeds it the game CPU's packets
   (length byte, then the bytes, one packet at a time once `$36` is clear) and sends the page on show to the display.
+  **MC6809 0.9.0 has a SEX bug**: a negative B leaves A unchanged (D = 0x??E8, not 0xFFE8); override `instruction_SEX`
+  with `@opcode(0x1D)` in a CPU subclass. On LOTR it put every text with a negative dx 256 dots to the right. Check a
+  core against a port object by object (frame sets) before trusting either, and run the whole board in a live game:
+  the game side must send what the main ROM sends (LOTR: 0x9C every 100 ticks from the main play background effect
+  0x1B, 61:702C), or the real board keeps its last object on screen where a lenient port does not.
