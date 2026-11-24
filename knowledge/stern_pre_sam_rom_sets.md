@@ -84,3 +84,14 @@ libpinmame plus a patched PinMAME core (RAM-write, solenoid-write and DMD-packet
 - **Audits are inline calls.** `jsr 0x9EF6; fdb counter` (+1, 4 BCD bytes, saturating) on Whitestar LOTR: scan the
   ROM for the call bytes to list every counter and its site (168 on LOTR), and decode the percentage routine
   (57:5F92 / 6127) when a rule reads a percentage (match, mystery extra ball / special weights).
+- **Run the display board's own ROM for the display; a port is only as fast as its timing model.** The Whitestar /
+  Data East 128x32 DMD board (MAME `src/mame/pinball/decodmd2.cpp`, hardware, not a capture): 6809E at 8 MHz / 4 =
+  2 MHz; FIRQ periodic at **80 Hz** (HOLD_LINE: keep it pending until the CPU takes it); reading the latch 0x3003 clears
+  the IRQ and BUSY; 0x3002 bits 0-4 the 16 KB ROM bank at 0x4000-0x7FFF; 0x8000-0xFFFF the ROM's last 32 KB; writes
+  to 0x4000-0x7FFF the status port. The two planes are 0x200 apart and the **first plane is the high bit** of the
+  2-bit intensity (linear: MAME `crtc_update_row`). The board is render-bound: on LOTR a full-screen render takes about
+  51,000 cycles (2 FIRQ ticks), so its display loop runs once per 3 ticks and a 9-tick script sleep shows as 12 ticks
+  (150 ms). A Python port that runs a pass per tick (and LOTR's port assumed 125 Hz) shows the same images twice as
+  fast. The boot sums the whole ROM first (about 700 ticks). A pure-Python 6809 core (`pip install MC6809`) runs the
+  board at about 2x real time: LOTR's `game/lotr/dmd/cpu_board.py` (private repo) feeds it the game CPU's packets
+  (length byte, then the bytes, one packet at a time once `$36` is clear) and sends the page on show to the display.
