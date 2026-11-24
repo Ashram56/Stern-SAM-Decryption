@@ -75,6 +75,15 @@ the same day).
 
 ## 0. Ground rules that saved (or would have saved) the most time
 
+0. **STRICT RULE: DECOMPILE EVERYTHING (owner, 2026-11-24).** Step zero for every game, before any other step: write
+   `docs/boards_inventory.md` (template `knowledge/templates/boards_inventory.md`), one row per board with its own CPU, MCU, ROM
+   or firmware (main, DMD, sound, anything else), with its ROM and a state `complet` / `partiel` / `absent`; decompile main ROM and
+   every board until all are `complet` (Ghidra: section 3.1). The code must cover scores, displays, inserts, coils and sounds; every datum
+   the code sends that you do not understand is traced to its destination and function. No rule, value, image or DMD render comes from a
+   PinMAME capture or trace (they confirm only); a last-resort exception needs the owner's prior approval, recorded in
+   `docs/pinmame_waivers.md`. Deliver the visual diagram (one ROM address per node) before C codes. Check with
+   `tools/strict_rule/check_strict_rule.py` (copy into the game repo as `tools/check_strict_rule.py`). Why: LOTR's sound board was never
+   decompiled and its DMD board only in part, so display values and bonus timings were built from captures and came out wrong.
 1. **Use the ROM's own fields to check your output.** The sound export was wrong for a day (wrong
    rate, truncated clips) until someone compared each WAV's length with the length the ROM stores for
    that sample. Any time the ROM stores a size, count, duration or checksum, compare against it.
@@ -891,6 +900,7 @@ start, hardware) in its own `AGENTS.md`; write one for every new ROM. Tron LE 1.
 
 (Section 14 is the checklist of what the result must contain.)
 
+0. **Boards inventory** (section 0, rule 0): `docs/boards_inventory.md`, every independent board listed; none is skipped.
 1. Identify the set; map memory; entropy scan. Run Pinball Asset Decryptor on the image for a first look
    at its sounds, pictures and frames (section 3.4).
 2. Build libpinmame with the hook; get a game started (section 4). Find `task_sleep`.
