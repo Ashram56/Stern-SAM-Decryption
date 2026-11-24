@@ -19,7 +19,7 @@ class T(unittest.TestCase):
             return c.run(d)[0]
 
     def good(self, **extra):
-        f = {"CLAUDE.md": c.MARKER, "docs/boards_inventory.md": INV % ("complet", "complet")}
+        f = {"CLAUDE.md": " ".join(c.MARKERS), "docs/boards_inventory.md": INV % ("complet", "complet")}
         f.update(extra)
         return f
 
@@ -31,7 +31,7 @@ class T(unittest.TestCase):
         self.assertTrue(any("Sound" in m for m in self.run_(f)))
 
     def test_missing_inventory_and_rule(self):
-        self.assertEqual(len(self.run_({"x.txt": "1"})), 2)
+        self.assertEqual(len(self.run_({"x.txt": "1"})), 4)
 
     def test_pinmame_source_fails_and_waiver_passes(self):
         f = self.good(**{"game/d.csv": "id,source\n1,pinmame render\n", "game/a.py": "x", "docs/functional_diagram.md": "0x8000"})

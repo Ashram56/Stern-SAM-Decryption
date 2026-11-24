@@ -4,7 +4,7 @@
     python check_strict_rule.py [REPO_ROOT]        exit 1 when a check fails
 
 Checks (each failure is printed as FAIL, heuristics as WARN):
-  1. CLAUDE.md carries the rule (marker "STRICT RULE: DECOMPILE EVERYTHING").
+  1. CLAUDE.md carries the rule and the working rules 6-7 (no "I continue" turn ends, 15-minute reports).
   2. docs/boards_inventory.md exists, lists every board with its own CPU/MCU/ROM, and every row is "complet".
   3. No data file declares a PinMAME / trace / capture / emulation / render source, unless the path is
      listed in docs/pinmame_waivers.md with "approved by Vincent <date>" (last resort, owner asked first).
@@ -16,6 +16,7 @@ Checks (each failure is printed as FAIL, heuristics as WARN):
 import csv, json, os, re, sys
 
 MARKER = "STRICT RULE: DECOMPILE EVERYTHING"
+MARKERS = (MARKER, "Never end a turn by announcing", "progress report at least every 15 minutes")
 STATES = {"complet": "complet", "complete": "complet", "partiel": "partiel", "partial": "partiel", "absent": "absent"}
 FIELDS = {"source", "origin", "provenance", "src"}
 BAD = re.compile(r"pinmame|trace|capture|emulat|render|screenshot", re.I)
@@ -44,9 +45,8 @@ def waivers(root):
 
 def check_rule_text(root):
     p = os.path.join(root, "CLAUDE.md")
-    if not os.path.isfile(p) or MARKER not in open(p, encoding="utf-8", errors="replace").read():
-        return [f'CLAUDE.md missing or without the rule marker "{MARKER}"']
-    return []
+    txt = open(p, encoding="utf-8", errors="replace").read() if os.path.isfile(p) else ""
+    return [f'CLAUDE.md missing the rule text "{m}"' for m in MARKERS if m not in txt]
 
 
 def check_inventory(root):
