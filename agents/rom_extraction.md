@@ -684,6 +684,18 @@ their own times (Tron descriptor `+0x10` / `+0x12`), which differ from what game
   real emulator run of the mode and compare. Lord of the Rings: the ROTK screen 0x3C looked unchanged by its
   4 bytes in injected renders; a real PinMAME multiball run showed each byte drawn as "NX" in its column,
   0 blanking the column.
+- **Decompile the display board's ROM too, and port it.** On a game whose display has its own CPU and ROM
+  (Whitestar, WPC DMD with its own board), the screens are that ROM's code: the game CPU sends only packets (an
+  object id and parameter bytes, score and status messages). Captures never cover every parameter and state, so
+  the owner ruled that the display is rebuilt from the board's decompiled code. Port its memory map, layer and
+  task records, script VM, draw modes, fonts and text formatter, transitions and packet handlers with the ROM's own
+  addresses and RAM layout, so each routine runs next to the ROM's on a CPU core and must agree on random states
+  (the core checks; it is never the source). Then find each packet's send site in the main ROM: the packet queues
+  it writes before the link routine (LOTR: status queue 0x0616 and object queue 0x05D6, opcode stored minus 0x80,
+  bit 7 set when copied, written to the latch 0x3600) give every opcode its routine and the RAM each byte comes
+  from; a value the screen shows (the replay level, team totals) is then read from the code, not guessed.
+  Lord of the Rings: 103 script routines and 6 transitions agree with the 6809 core; the send sites gave the
+  replay line (20,000,000 from the defaults list) and showed two score records are team totals, both wrong before.
 
 **Tron worked example** (`rom_data/io/coils.csv`, `coil_calls.csv`, `coil_rules.json`; commit 8cd7439):
 
