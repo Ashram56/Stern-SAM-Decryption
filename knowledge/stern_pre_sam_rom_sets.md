@@ -70,3 +70,17 @@ libpinmame plus a patched PinMAME core (RAM-write, solenoid-write and DMD-packet
   (row and strobe handlers), OR the rows per column over 2 scans (a scan is about 10 ms; the strobe returning to
   column 0 marks it) and write one full state per change. LOTR's recorder: `LOTR_LAMPSCAN` in its
   `tools/pinmame/lotr_trace.patch` (private repo).
+- **Know what each input port bit is before reading a wait as "the display finished".** On Whitestar the game CPU's
+  0x3700 is a 74HC245 of mixed lines (PinMAME `se.c` `dmdstatus_r`, the board wiring, not a capture): bit 7 the DMD
+  board's busy, bits 3-6 the four DMD status bits (what the DMD ROM writes to its own 0x4000), bit 1 the **sound
+  board's** SST0, bit 0 the sound busy. A game loop that waits for bit 1 to change (LOTR's bonus screens, 61:727D,
+  2 + up to 64 ticks) is waiting for the sound board, not the display: its exact length needs the sound board's ROM;
+  rebuild the bound from the code and say the early exit is open.
+- **An effect's table object can be overwritten by its script.** The effect start writes the table's object to the
+  packet buffer (LOTR 0x05D8) and the script may write another one before the first send: list what the script sends,
+  not the table's object (LOTR effect 0x0F: table 0xE2, sent 9B E3 / 9B E5).
+- **Timers of entry screens may not count in task ticks.** LOTR's initials entry counts 0x0266 units of 10.25 ms
+  (the IRQ's own counter), not the 16.4 ms task tick: read the counter the loop decrements before converting.
+- **Audits are inline calls.** `jsr 0x9EF6; fdb counter` (+1, 4 BCD bytes, saturating) on Whitestar LOTR: scan the
+  ROM for the call bytes to list every counter and its site (168 on LOTR), and decode the percentage routine
+  (57:5F92 / 6127) when a rule reads a percentage (match, mystery extra ball / special weights).
