@@ -678,6 +678,12 @@ their own times (Tron descriptor `+0x10` / `+0x12`), which differ from what game
   the same "on"), or every window of a breathing flasher reads as a mismatch. Lord of the Rings: task loops
   restart a breathing effect whenever it is not running (Escape, Balrog hurry-up, Destroy the Ring); with
   per-pulse logging the trace net dropped from 9 to 3 matching windows, with smoothed logging it rose to 10.
+- **Confirm a parametric screen in a real run.** A render made by injecting an effect's parameter bytes
+  can show no change when the board draws them only in some state the injection does not reach (a blink
+  phase, a running effect's redraw). Before writing "these bytes change nothing", capture the effect in a
+  real emulator run of the mode and compare. Lord of the Rings: the ROTK screen 0x3C looked unchanged by its
+  4 bytes in injected renders; a real PinMAME multiball run showed each byte drawn as "NX" in its column,
+  0 blanking the column.
 
 **Tron worked example** (`rom_data/io/coils.csv`, `coil_calls.csv`, `coil_rules.json`; commit 8cd7439):
 
