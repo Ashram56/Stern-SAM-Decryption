@@ -671,6 +671,13 @@ their own times (Tron descriptor `+0x10` / `+0x12`), which differ from what game
   code-only, and say how they could be measured (a different setting, a poke, real hardware).
 - **API variants.** The driver API has plain pulse, pulse-and-wait, pattern, PWM and serialised-queue
   variants (Tron `0x2bc8`, `0x2cb0`, `0x2d18`, `0x2e5c`, `0x2b60`); hook all of them, or calls slip through.
+- **Flasher PWM against traces.** A PinMAME trace records a coil through libpinmame's solenoid callback,
+  which smooths PWM: a flasher breathing on a 16-bit pattern (1 to 8 bits of 16) is one `sol_on` for the whole
+  breath, not one per pulse. The rebuild drives the pattern as the pulse's power (bits / 16; MPF
+  `pulse_power`), and its trace must log a coil the same way (a coil off for less than about 0.1 s is still
+  the same "on"), or every window of a breathing flasher reads as a mismatch. Lord of the Rings: task loops
+  restart a breathing effect whenever it is not running (Escape, Balrog hurry-up, Destroy the Ring); with
+  per-pulse logging the trace net dropped from 9 to 3 matching windows, with smoothed logging it rose to 10.
 
 **Tron worked example** (`rom_data/io/coils.csv`, `coil_calls.csv`, `coil_rules.json`; commit 8cd7439):
 
