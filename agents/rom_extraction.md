@@ -277,6 +277,24 @@ fake 16 ms clock and continue) produced exact colour/fade/timing sequences far f
 emulation. Good for any effect that only calls a few OS functions; use full PinMAME when the effect
 reads game state.
 
+**Since the strict rule (2026-11-24) this is the main way to decode effects** (code, Transformers tf_180,
+2026-11-25: 117 of 153 deffs, all 178 leffs, 15 adjustment formatters). Load the whole ROM image in Unicorn (no
+machine emulator: the OS, the game code, RAM initialised from the ROM bytes), run the effect's own function, and
+answer in Python only the OS services that need a machine: `task_sleep` and the task calls (a small cooperative
+scheduler: each task its own context, `context_save` on sleep), sound, deff / leff starts, the flash bank switch.
+Let everything else run as ROM code: the text helpers, `msg_get`, `vsprintf`, the lamp library and its layers,
+the status panel. Record the display primitives (fill, rect, copy, bitmap, text, show, remap, dissolve) as an op
+list with the return address of each call, and draw it with the primitives re-implemented from their routines.
+What cost time, in order: the right `task_current` RAM address (a wrong one gives garbage task structs); the
+bank switch routine (fonts and images in banked flash read as unmapped without it); task struct and stack areas
+apart from the OS's; a sound routine that retries until it returns 1; the lamp layer pool, filled by a boot init
+routine that must be called first; a memory hook on the DMD pages to catch a primitive you have not modelled.
+Compare with any old capture: on Transformers 84 deffs matched every captured frame, the rest differed only by
+game state (side, shots left, value texts), which is the next step (one run per state the caller sets).
+Two lessons: a captured loop "period" can be wrong (leff 1: the capture said 4819 ms, the code's exact cycle is
+4220 ticks), and the OS tick is 64 IO interrupts of 250 us = 16.0 ms nominal while the emulator measures about
+16.26 ms per pass (the pass runs late): say which one a timing uses.
+
 ### 3.4 Pinball Asset Decryptor: first look and independent cross-check
 [davidvanderburgh/pinball-asset-decryptor](https://github.com/davidvanderburgh/pinball-asset-decryptor)
 (MIT, desktop app for Windows, macOS and Linux, releases page; or run from source) reads a SAM code update
@@ -653,6 +671,13 @@ their own times (Tron descriptor `+0x10` / `+0x12`), which differ from what game
 5. **Map to the rebuild.** Give MPF the values directly (`default_pulse_ms`, `default_hold_power` or
    `pwm` settings, `allow_enable` for motors and relays), and say which values came from the ROM and
    which are platform choices.
+
+**Pops and slingshots are OS device tables** (code, Transformers tf_180): the IO interrupt's 1 ms pass
+(every 4 interrupts of 250 us) fires them itself, no game call. Pops: 12-byte records `{u16 on ms, u16 dead ms,
+u8 debounce, -, u8 switch, u8 coil, ...}` (tf_180 `0x040ddfb0`, set up by `0x2c3c`); slings: 8-byte records
+`{u16 on ms, u16 dead ms, u8 switch, u8 coil}` (`0x040ddfe0`, `0x3148`). Code 32 / 64 ms; the emulator had
+measured 34 / 67 ms, 2-3 ms too long: take the table, not the measurement. When scanning call sites for constant arguments, disassemble word by
+word (capstone stops at the first literal word) and follow `mov r0, r4` back to the constant.
 
 **Lessons from doing this on Tron:**
 - **Zero-cross sync.** Many kicks pass `sync = 1`, which waits for the next AC zero-cross edge (Tron:
