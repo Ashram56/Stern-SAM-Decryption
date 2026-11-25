@@ -308,6 +308,23 @@ Two lessons: a captured loop "period" can be wrong (leff 1: the capture said 481
 4220 ticks), and the OS tick is 64 IO interrupts of 250 us = 16.0 ms nominal while the emulator measures about
 16.26 ms per pass (the pass runs late): say which one a timing uses.
 
+**Whole scenarios in the ROM's code (rules, not only effects).** The same runner can play a game: run the
+module constructors first (`__do_global_ctors`: every rule module registers its event hooks there; without it the
+values set at ball start stay 0), call `game_init`, clear the "starting" game-state bit as the start-button
+handler does, then each 16 ms tick do what the OS main loop does (the per-tick OS work routine: event 0x20, display
+queue, lamp compositor, sounds, switch debounce; then every task due; then the end-of-tick hooks), and feed the
+reference scenario's inputs (switch edges decided as the switch dispatcher does: the record's edge and game-state
+mask, task id and arguments) with the tracer's ball model. Compare each scenario mark with its trace: on
+Transformers (2026-11-25) 24 scenarios, points equal on 260 of 262 marks. What it took, in order: keep the OS
+task list yourself (the OS's own "is task running / kill range / first in range" walk it); run the task exit path
+with its exit calls (the per-task call slots at +0x48: they reset things such as the playfield multiplier); stop
+answering game state in Python (current player, side, flipper buttons): let the ROM read its RAM, or a two-player
+game silently stays one-player; dedicated switches (flippers, tilt, coins, numbers 0x81..) have their records in
+a second table (TF: 0x040e3740, found in the switch-record lookup routine); insert coins before START like the
+tracer; a deff that lowers its own priority must really write it, or the next display never replaces it and every
+wait on "display free" runs long; and treat each `random_below` draw as an input of the run (the side drawn at
+game start decides half the rules): declare it in the scenario as a comment line the tracer ignores.
+
 ### 3.4 Pinball Asset Decryptor: first look and independent cross-check
 [davidvanderburgh/pinball-asset-decryptor](https://github.com/davidvanderburgh/pinball-asset-decryptor)
 (MIT, desktop app for Windows, macOS and Linux, releases page; or run from source) reads a SAM code update
