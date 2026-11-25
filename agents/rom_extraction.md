@@ -82,7 +82,10 @@ the same day).
    the code sends that you do not understand is traced to its destination and function. No rule, value, image or DMD render comes from a
    PinMAME capture or trace (they confirm only); a last-resort exception needs the owner's prior approval, recorded in
    `docs/pinmame_waivers.md`. Deliver the visual diagram (one ROM address per node) before C codes. Check with
-   `tools/strict_rule/check_strict_rule.py` (copy into the game repo as `tools/check_strict_rule.py`). Why: LOTR's sound board was never
+   `tools/strict_rule/check_strict_rule.py` (copy into the game repo as `tools/check_strict_rule.py`). Any file still built from
+   a capture says so where the check reads it (a `source` / `*_source` column or key, a `capture` key, or a header
+   comment "captured in the emulator"), so the check lists it; Transformers Pro 1.80 had 153 deff captures, 111 leff shows and
+   the coil times measured in the emulator that no column declared (found 2026-11-25). Why: LOTR's sound board was never
    decompiled and its DMD board only in part, so display values and bonus timings were built from captures and came out wrong.
 1. **Use the ROM's own fields to check your output.** The sound export was wrong for a day (wrong
    rate, truncated clips) until someone compared each WAV's length with the length the ROM stores for

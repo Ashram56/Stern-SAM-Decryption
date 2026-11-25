@@ -39,6 +39,24 @@ class T(unittest.TestCase):
         f["docs/pinmame_waivers.md"] = "- `game/d.csv` approved by Vincent 2026-11-25\n"
         self.assertEqual(self.run_(f), [])
 
+    def test_second_table_without_state_column(self):
+        # a note table after the inventory (boards with no firmware) is not read as inventory rows
+        inv = INV % ("complet", "complet") + "\n| Board | Why no firmware |\n|---|---|\n| IO driver | latches |\n"
+        self.assertEqual(self.run_(self.good(**{"docs/boards_inventory.md": inv})), [])
+
+    def test_short_row_is_a_failure_not_a_crash(self):
+        inv = "| Board | CPU | ROM | Decompile state |\n|---|---|---|---|\n| Main | ARM |\n"
+        self.assertTrue(any("Main" in m for m in self.run_(self.good(**{"docs/boards_inventory.md": inv}))))
+
+    def test_undeclared_captures_are_found(self):
+        f = self.good(**{"game/a.py": "x", "docs/functional_diagram.md": "0x8000",
+                         "pkg/coils.csv": "coil,mpf_source\n1,observed in play\n",
+                         "pkg/shows/leff_1.yaml": "#show_version=6\n# lamp effect 1, captured in the emulator (lfx.cpp)\n- duration: 80ms\n",
+                         "pkg/deff_1/timing.json": '{"deff": 1, "capture": "fg2"}'})
+        out = " ".join(self.run_(f))
+        for name in ("coils.csv", "leff_1.yaml", "timing.json"):
+            self.assertIn(name, out)
+
     def test_diagram_gate(self):
         self.assertTrue(any("diagram" in m for m in self.run_(self.good(**{"game/a.py": "x"}))))
 
