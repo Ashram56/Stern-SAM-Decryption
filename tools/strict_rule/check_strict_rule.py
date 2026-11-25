@@ -8,8 +8,9 @@ Checks (each failure is printed as FAIL, heuristics as WARN):
   2. docs/boards_inventory.md exists, lists every board with its own CPU/MCU/ROM, and every row is "complet".
   3. No data file declares a PinMAME / trace / capture / emulation / render source, unless the path is
      listed in docs/pinmame_waivers.md with "approved by Vincent <date>" (last resort, owner asked first).
-     Declared = CSV column source|origin|provenance, JSON key of that name, or a "source:" line in the first
-     10 lines of a text file. Reference traces (dirs traces/, captures/) are confirm-only and are skipped.
+     Declared = CSV column source|origin|provenance (or a column ending in _source), JSON key of that name or a
+     "capture" key, a "source:" line or a "captured / measured / recorded in the emulator" comment in the first
+     10 lines of a text file (a show file, a YAML table). Reference traces (dirs traces/, captures/) are confirm-only and are skipped.
   4. If game code exists (game/ with a non-doc file), docs/functional_diagram.md (or docs/flow/) exists and
      cites ROM addresses: agent C codes nothing before agent A's diagram.
 """
@@ -19,7 +20,13 @@ MARKER = "STRICT RULE: DECOMPILE EVERYTHING"
 MARKERS = (MARKER, "Never end a turn by announcing", "progress report at least every 15 minutes")
 STATES = {"complet": "complet", "complete": "complet", "partiel": "partiel", "partial": "partiel", "absent": "absent"}
 FIELDS = {"source", "origin", "provenance", "src"}
-BAD = re.compile(r"pinmame|trace|capture|emulat|render|screenshot", re.I)
+BAD = re.compile(r"pinmame|trace|capture|emulat|render|screenshot|observed in (?:play|the emulator)", re.I)
+CAPTURED = re.compile(r"(?:captured|measured|recorded|rendered)\s+(?:in|from|with)\s+(?:the\s+)?(?:emulator|pinmame|libpinmame)", re.I)
+
+
+def is_source_field(name):
+    n = (name or "").lower()
+    return n in FIELDS or n.endswith("_source")
 SKIP_DIRS = {".git", "node_modules", "traces", "trace", "captures", "__pycache__", ".godot"}
 ADDR = re.compile(r"0x[0-9a-fA-F]{3,}|\b[0-9a-fA-F]{1,2}:[0-9a-fA-F]{4}\b|\bFUN_[0-9a-fA-F]+")
 TEXT_EXT = (".md", ".txt", ".yaml", ".yml", ".cfg", ".csv", ".json", ".jsonl")
@@ -59,14 +66,14 @@ def check_inventory(root):
             continue
         cells = [c.strip().strip("`") for c in line.strip().strip("|").split("|")]
         low = [c.lower() for c in cells]
-        if low[0] == "board" and any("decompil" in c for c in low):
-            col = next(i for i, c in enumerate(low) if "decompil" in c)
+        if low[0] == "board":                       # a table header: only a table with a decompile column counts
+            col = next((i for i, c in enumerate(low) if "decompil" in c), None)
         elif col is not None and not set("".join(cells)) <= set("-: "):
-            rows.append(cells)
+            rows.append((cells + [""] * (col + 1 - len(cells)), col))
     if not rows:
         return ["docs/boards_inventory.md has no board row (columns: Board | CPU | ROM | Decompile state ...)"]
     out = []
-    for c in rows:
+    for c, col in rows:
         st = STATES.get(c[col].lower().split()[0] if c[col].strip() else "", None)
         if st is None:
             out.append(f"boards_inventory: board '{c[0]}' has no valid state (complet / partiel / absent): '{c[col]}'")
@@ -81,7 +88,7 @@ def declared_sources(path):
         if ext == "csv":
             with open(path, newline="", encoding="utf-8", errors="replace") as f:
                 r = csv.DictReader(f)
-                cols = [c for c in (r.fieldnames or []) if c and c.lower() in FIELDS]
+                cols = [c for c in (r.fieldnames or []) if is_source_field(c)]
                 for row in r:
                     for c in cols:
                         yield row.get(c) or ""
@@ -98,8 +105,10 @@ def declared_sources(path):
                     o = stack.pop()
                     if isinstance(o, dict):
                         for k, v in o.items():
-                            if k.lower() in FIELDS and isinstance(v, str):
+                            if is_source_field(k) and isinstance(v, str):
                                 yield v
+                            elif k.lower() == "capture" and isinstance(v, (str, bool)) and v:
+                                yield "capture"
                             elif isinstance(v, (dict, list)):
                                 stack.append(v)
                     elif isinstance(o, list):
@@ -109,6 +118,8 @@ def declared_sources(path):
                 m = re.match(r"\s*(?:#|//|<!--)?\s*\**(?:source|provenance)\**\s*:\s*(.+)", line, re.I)
                 if m and not re.search(r"src/|\.(c|cpp|h)\b", m.group(1)):   # a cited PinMAME source file is documentation
                     yield m.group(1)
+                elif re.match(r"\s*(?:#|//|<!--|;)", line) and CAPTURED.search(line):
+                    yield CAPTURED.search(line).group(0)
     except OSError:
         return
 
