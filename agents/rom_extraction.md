@@ -290,7 +290,20 @@ bank switch routine (fonts and images in banked flash read as unmapped without i
 apart from the OS's; a sound routine that retries until it returns 1; the lamp layer pool, filled by a boot init
 routine that must be called first; a memory hook on the DMD pages to catch a primitive you have not modelled.
 Compare with any old capture: on Transformers 84 deffs matched every captured frame, the rest differed only by
-game state (side, shots left, value texts), which is the next step (one run per state the caller sets).
+game state (side, shots left, value texts).
+**Effects drawn from game state: one run per state the caller sets.** List the words each caller stores into
+the task `deff_start` returns (`*(T *)(task + 0x30) = ...`, then +0x34 ...): grep the decompile for the store
+after each `deff_start(id, ..)`. Write them into the task struct before the first instruction, and write the RAM
+the effect reads (a counter, a per-player array, a record with a checksum, recomputed with the OS's own sum
+routine) before the run; a `random_below` answers one value per run. Cite each state to the routine that sets it,
+package the first run and keep the others' op lists next to it. On Transformers (2026-11-25) this decoded the
+last 38 of 153 deffs: battle displays (shots left at their start count), tournament screens (a valid tournament
+record), high-score and initials entry (the 0x24-byte record the caller builds on its stack, read field by field
+from the deff), jackpot videos (one run per random pick). Two traps: an effect started from inside another one
+draws on the work pages that one allocated (set the work page variables to a real pair, or the fg and bg are the
+same page); and the OS edit cursor writes the page directly (TF `0x0002b808`, invert a box: 0 <-> 0xf), so catch
+it with the page-write hook and model it as one more primitive. A captured frame of a forced effect often is
+not that effect at all (forced without its arguments, it ended at once and the capture shows what was under it).
 Two lessons: a captured loop "period" can be wrong (leff 1: the capture said 4819 ms, the code's exact cycle is
 4220 ticks), and the OS tick is 64 IO interrupts of 250 us = 16.0 ms nominal while the emulator measures about
 16.26 ms per pass (the pass runs late): say which one a timing uses.
