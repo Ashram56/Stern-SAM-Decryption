@@ -15,7 +15,7 @@ Tags as in the README: **code** (read from the ROM), **emulator** (patched libpi
 | Interface | How the CPU reaches it | Rate | Tag |
 |---|---|---|---|
 | IO power board (coils, lamps, aux, GI) | 8-bit bus at 0x02400020 (EBI CS1) | 250 µs tick | code + hardware |
-| DMD | frame pages in external SRAM, two page registers; the Xilinx FPGA scans the display (section 3) | page flip every OS tick (16 ms) | code + emulator |
+| DMD | frame pages in external SRAM, two page registers; the Xilinx CPLDs scan the display (section 3) | page flip every OS tick (16 ms) | code + emulator |
 | Audio | FIQ every 250 µs; 6 stereo frames written to a 24-byte buffer the Xilinx plays | 24 kHz stereo, 16-bit | code + emulator |
 | Audio volume | bit-banged 3-wire link on PIO P3-P5 to the DAC | on change | code + emulator |
 | Switch matrix | 16-bit return + column strobe at 0x01100000 (section 5) | one column per 250 µs, 1 ms full scan; flippers/slings reach the coils in the same tick | code + emulator |
@@ -49,7 +49,7 @@ The emulator measures 62 main-loop passes per second. The AT91 watchdog is never
 ### 3.1 What the CPU sees
 
 Everything sits on EBI chip select 3 (CSR3 = 0x01003121: 16 MB window at 0x01000000, 16-bit, 1 wait state, byte
-select). Inside that window the U13 SRAM holds the frame pages, and the Xilinx FPGA decodes the registers at
+select). Inside that window the U13 SRAM holds the frame pages, and the Xilinx CPLDs decode the registers at
 0x01100000 and up (the board split is inferred; the addresses are code).
 
 | Address | Access | Content | Tag |
@@ -98,7 +98,7 @@ ROM wrote had mask 0, so the background never showed through there; which effect
 
 ### 3.4 Display scan (external, needs a scope)
 
-The ROM never touches row timing, so this part is the FPGA's alone. PinMAME's notes, which say they were checked
+The ROM never touches row timing, so this part is the CPLDs' alone. PinMAME's notes, which say they were checked
 against real hardware:
 
 | Quantity | Value |
