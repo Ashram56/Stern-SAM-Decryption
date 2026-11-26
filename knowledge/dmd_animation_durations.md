@@ -39,10 +39,12 @@ the wait routine). A board with its own firmware (LOTR DMD) cites the timer setu
 | `class` | `finite` / `loop` (repeats until stopped) / `held` (last frame held until replaced) / `state_dependent` / `empty` (no animation) |
 | `ticks`, `ms` | finite: total; `ms = ticks * tick_ms`. loop: duration of **one cycle**. held: ticks before the held frame. state_dependent: leave empty and fill `min_ticks`, `max_ticks` |
 | `min_ticks`, `max_ticks` | range when `class=state_dependent`, else equal to `ticks` |
-| `end_addr` | where the effect ends or returns (finite), cited |
+| `end_addr` | finite: the call site of the last wait (the code after it returns without waiting), cited |
 | `loop_addr` | back-edge target (loop) or the address that holds the last frame (held) |
 | `decider_addr` | RAM or code address that decides a state-dependent duration |
 | `method` | `exec_hooked` (D), `static_path` (A) or `both` (D checked against A) |
+| `elapsed_ticks` (optional) | elapsed time measured on a core with a real interrupt model; must equal `ticks` within the code time between waits (empty on a stubbed scheduler) |
+| `notes` (optional) | child tasks, forced random values, loop arguments |
 | `states_tested`, `state_stable` | number of states run; `yes` / `no` |
 | `wait_sites` | space-separated `addr:ticks` list of the waits summed (proof of the number) |
 
@@ -50,7 +52,28 @@ Rules: every row cites addresses; `class=finite` needs `ticks`, `ms`, `end_addr`
 `min_ticks`, `max_ticks`, `decider_addr`; `empty` has `ticks=0`. A `capture`, `pinmame` or `render` value in `method` is a failure.
 No duration without `wait_sites`, except `empty`. The human view of a row is the effect's page in `docs/boards/dmd/`, which links the row.
 
-## 4. Check
+## 5. Per platform: what to hook, where the tick comes from
+
+The method (D) is the same everywhere; only the wait routine and the tick source change. `wait_sites` always cite the call site.
+
+| | WPC / Whitestar 6809 (T2, MM) | Stern SAM (ARM7, DMD driven by the main CPU) |
+|---|---|---|
+| Wait routine to intercept | `task_sleep`, inline 1-byte argument (T2 `fix:8346`; hook its `jmp task_save_and_switch` at `fix:835b`: B = ticks; call site = word at the stack top - 4) | `task_sleep(ticks)` (r0 = ticks; Tron `0xb91c`, call site = LR - 4). Also `deff_frame_sleep(ticks)` = `dmd_flip` + `task_sleep` (Tron `0x2791c`), and the library loops that sleep inside: `anim_play` / `anim_play_pal` (Tron `0x1023edc`, `ticks_per_frame x frames x loops`): the sleeps are logged where they happen, inside the library, with the library call site as `wait_sites` and the loop arguments in `notes`. Addresses differ per game and OS build: find them again through `sam_os_api.json` and rom_extraction.md section 5.1. |
+| Current task | RAM `$53` (T2), hook reads it to tell the effect's task from the game's | the OS current-task global (rom_extraction.md section 3.3: tasks are answered in Python by the stub scheduler) |
+| Tick source | IRQ vector (T2 `fix:d9c0`): `incb / andb #15` = 16 IRQ per tick, `inc $50` at `fix:d9ce`; IRQ 976 Hz from the 2 MHz ASIC timer; tick = 16.384 ms | 64 IO ticks of 250 us (TC0 RC=5000 at MCK/2, set at Tron `0x13484`), counter advanced every 64 (Tron `0x37364`), consumed by the main loop (Tron `0x3405c`): **tick = 16.000 ms in the code**. |
+| How the core runs | full machine core (T2 `wpcemu`): real IRQ, so `elapsed_ticks` can cross-check the sum | whole ROM in Unicorn with the scheduler stubbed (Transformers `deff_lift.py`, rom_extraction.md section 3.3): no interrupt model, so the duration is the **sum of logged waits only**; `elapsed_ticks` stays empty. |
+| Random branches | rare | `random_below`, `random_percent`, `bag_weighted_pick` are OS calls: force every value in turn and report the `min_ticks` / `max_ticks` range (the forced variable is the `decider_addr`) |
+| Caller state | RAM flags | task arguments stored by the caller after `deff_start` (task + 0x30...), game RAM read by the effect: run with several argument sets; unresolved ones are `state_dependent` |
+
+**SAM-specific rules.**
+1. `tick_ms = 16.000` from the code. Never write the 16.15-16.26 ms a PinMAME trace shows (a pass can overrun; Transformers measured 16.15, Tron 16.26): that is an emulator capture, forbidden as a source. A trace is only ever compared to it, in ticks.
+2. A picture is shown for its `task_sleep` ticks **plus** the rest of the main-loop pass that flips it: the flip happens once per pass, so the effective on-screen time of a frame is quantised to whole ticks. The CSV holds the code's ticks; the playback layer (agent C) applies the quantisation.
+3. Effects that write the DMD page directly, take pointer arguments (high-score entry) or depend on task arguments set by the caller are `state_dependent` until the caller's arguments are enumerated from the callers' call sites (static scan of `deff_start` callers); say so in `notes`, never guess a value.
+4. DMD driven by the main CPU (SAM, MM): the effect's task is the main CPU's task; there is no firmware tick to find. A game whose display board has its own firmware (LOTR Whitestar) cites that firmware's timer setup (section 2) and hooks the board's wait routine.
+
+**Blocker to report.** The SAM instance needs the game's ROM and a Unicorn lift (Transformers has one; Tron's deffs are not lifted yet), so applying the standard to a SAM game costs one lift run per game; nothing in the standard itself blocks it.
+
+## 6. Check
 
 `tools/check_strict_rule.py` validates `rom_data/dmd_durations.csv` when it exists (columns, class rules, `ms = ticks * tick_ms` within
 0.5 ms, addresses cited, no capture method); a game that has a DMD effect table (`rom_data/dmd_*effects*.csv`, `dmd_deff*.csv`,
