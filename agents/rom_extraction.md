@@ -368,10 +368,14 @@ This took longer than anything else on day one. Checklist:
     line; match on a pid file or an exact binary name.
 11. **Lamps.** libpinmame lamp numbers 1-80 equal the ROM's lamp table numbers; 101+ are extra outputs
    PinMAME synthesises (Tron's RGB tubes are 101-106).
-12. **Timing.** One OS tick is about **16.26 ms** in play (measured 16.25-16.30). The ROM itself
-   treats 62 ticks as a "second", and some countdowns use 60, 64, 66 or 68. Give specs in ticks and ms.
-   The main loop is paced from the 250 µs IO interrupt (a counter that steps every 64 IO ticks, 16.0 ms
-   nominal; section 8.2); the measured pass interval is a little longer because a pass can overrun.
+12. **Timing.** The OS tick is **16.0 ms** in the code (64 IO ticks of 250 µs; section 8.2): a recreation runs
+   on that. In a PinMAME reference trace a tick lasts a little longer, because a pass can overrun; measure it on a
+   long span the code counts exactly (a mode timer's seconds, a deff whose ticks are known), never on mixed
+   spans. Tron measured 16.26 ms (16.25-16.30); Transformers 1.80 is 16.15 ms (44 battle seconds of 66 ticks in
+   46.93 s; a 343-tick deff in 5.539 s), and replaying its traces at 16.26 drifted 0.3 s over one battle and
+   gave a false extra bonus. A trace replay scales its waits by 16.0 / measured tick and writes the game's times
+   back in reference seconds. The ROM treats 62 ticks as a "second", and some countdowns use 60, 64, 66 or 68.
+   Give specs in ticks and ms.
 13. **PinMAME's "4008 Hz" is the sound FIQ, not the IO tick.** The IO tick is a CPU timer (TC0) at
    exactly 4000 Hz. Don't take timer rates from PinMAME comments; read the timer setup in the ROM.
 
