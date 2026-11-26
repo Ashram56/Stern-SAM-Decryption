@@ -166,6 +166,19 @@ the same day).
     traces; traces and rulesheets only confirm. On Lord of the Rings C built from traces before this existed, and
     the owner found a dozen wrong or missing rules (souls, member collection, credits screen, coin sound, music);
     Terminator 2 did the diagram first.
+    The delivery includes the display effect scheduler (per effect: object, priority, queue or drop, how long its
+    script holds the display: walk every path of the script, both ways at each conditional branch, and sum its
+    sleeps; when the paths differ, name the RAM the branch tests so C passes the length its state picks; a path that
+    loops back is a counted loop or a wait, so its sum is too short: run it instead, see below; LOTR: 57 of 178
+    scripts branch, most to the same length) and the routines every mode shares (blocking-task gates, the common switch award,
+    the ball-in-play award, the multiball end), each read in the disassembly: on LOTR a third of the differences a
+    later audit found were errors in the rule sheets themselves, so have a second session re-read each sheet
+    against the disassembly before C codes from it. Add a flow chart per mode for the owner (recreation.md 6).
+    Lamp shows and looping scripts: run the OS task itself on a CPU emulator (6809: PyPI `MC6809`; ARM for SAM:
+    unicorn) with the ROM mapped, stop it at each OS sleep call (record the lamp bit maps, advance the tick count),
+    switch banks at the far-call stub, and end at the task-exit routine. LOTR `tools/leff_emu.py`: all 77 lamp
+    effects and every display script in 9 s, the frames of 26 one-shot shows, the tick each script starts its lamp
+    show, and the length of 18 looping scripts; a loop counted by game RAM takes the RAM you set (zero by default).
 
 ---
 
@@ -670,6 +683,31 @@ their own times (Tron descriptor `+0x10` / `+0x12`), which differ from what game
   code-only, and say how they could be measured (a different setting, a poke, real hardware).
 - **API variants.** The driver API has plain pulse, pulse-and-wait, pattern, PWM and serialised-queue
   variants (Tron `0x2bc8`, `0x2cb0`, `0x2d18`, `0x2e5c`, `0x2b60`); hook all of them, or calls slip through.
+- **Flasher PWM against traces.** A PinMAME trace records a coil through libpinmame's solenoid callback,
+  which smooths PWM: a flasher breathing on a 16-bit pattern (1 to 8 bits of 16) is one `sol_on` for the whole
+  breath, not one per pulse. The rebuild drives the pattern as the pulse's power (bits / 16; MPF
+  `pulse_power`), and its trace must log a coil the same way (a coil off for less than about 0.1 s is still
+  the same "on"), or every window of a breathing flasher reads as a mismatch. Lord of the Rings: task loops
+  restart a breathing effect whenever it is not running (Escape, Balrog hurry-up, Destroy the Ring); with
+  per-pulse logging the trace net dropped from 9 to 3 matching windows, with smoothed logging it rose to 10.
+- **Confirm a parametric screen in a real run.** A render made by injecting an effect's parameter bytes
+  can show no change when the board draws them only in some state the injection does not reach (a blink
+  phase, a running effect's redraw). Before writing "these bytes change nothing", capture the effect in a
+  real emulator run of the mode and compare. Lord of the Rings: the ROTK screen 0x3C looked unchanged by its
+  4 bytes in injected renders; a real PinMAME multiball run showed each byte drawn as "NX" in its column,
+  0 blanking the column.
+- **Decompile the display board's ROM too, and port it.** On a game whose display has its own CPU and ROM
+  (Whitestar, WPC DMD with its own board), the screens are that ROM's code: the game CPU sends only packets (an
+  object id and parameter bytes, score and status messages). Captures never cover every parameter and state, so
+  the owner ruled that the display is rebuilt from the board's decompiled code. Port its memory map, layer and
+  task records, script VM, draw modes, fonts and text formatter, transitions and packet handlers with the ROM's own
+  addresses and RAM layout, so each routine runs next to the ROM's on a CPU core and must agree on random states
+  (the core checks; it is never the source). Then find each packet's send site in the main ROM: the packet queues
+  it writes before the link routine (LOTR: status queue 0x0616 and object queue 0x05D6, opcode stored minus 0x80,
+  bit 7 set when copied, written to the latch 0x3600) give every opcode its routine and the RAM each byte comes
+  from; a value the screen shows (the replay level, team totals) is then read from the code, not guessed.
+  Lord of the Rings: 103 script routines and 6 transitions agree with the 6809 core; the send sites gave the
+  replay line (20,000,000 from the defaults list) and showed two score records are team totals, both wrong before.
 
 **Tron worked example** (`rom_data/io/coils.csv`, `coil_calls.csv`, `coil_rules.json`; commit 8cd7439):
 
