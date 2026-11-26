@@ -101,6 +101,8 @@ the same day).
 5. **Before calling code dead, search the whole image.** A function is dead only if there is no `BL`
    to it in any code block *and* its address (as a little-endian u32) appears nowhere in the full ROM
    file (pointer tables live in the data banks). Tron 1.74 has real dead code (a whole video mode).
+   Also look for a PC-relative `ADD rX, pc, #imm` that builds the address (no literal word then): Transformers
+   leff 149 and its sound call had none of the three, so they are dead, not missing.
 6. **Check table entries for stubs.** Deff 22 pointed at a function whose only instruction was
    `mov pc, lr`. It was reported as "an uncaptured tilt warning" until someone disassembled it.
 7. **Every path a README mentions must exist in the deliverable.** A `parts/` folder was written to a

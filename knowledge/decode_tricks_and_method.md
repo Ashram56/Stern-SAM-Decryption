@@ -1,6 +1,6 @@
 # Decoding a SAM ROM with less capable agents: the tricks, one method each, the global method, escalation
 
-Written from the Tron DMD-from-code work (2026-11). Game-agnostic: addresses below are SAM OS conventions seen on one game, to be re-found
+Written from the Tron DMD-from-code work (2026-11); section 4 and the additions marked Transformers from Transformers Pro 1.80 (2026-11-26). Game-agnostic: addresses below are SAM OS conventions seen on one game, to be re-found
 on another ROM (rom_extraction.md says how). Everything here serves the STRICT RULE: every value comes from the ROM code, an emulator
 capture is only a control.
 
@@ -32,7 +32,56 @@ capture is only a control.
 6. **MPF rules and improvements** are the MPF half's: `knowledge/recreation_method_for_weaker_agents.md` in Ashram56/MPF-Godot-Packaging (rules per node, bench, switchable improvements). Log every departure in `rom_differences.md`.
 7. **Display conformance**: rerun it against the code frames with improvements off after any change.
 8. **Guard rails**: `check_strict_rule.py` before every push; progress report every 15 minutes; never end a turn announcing a next step while doable work remains.
+9. **Pilot, then scale.** A new runner or lift runs first on one item that has independent evidence (an old capture, a trace
+   span the code counts in ticks); scale only when the pilot matches exactly (Transformers: deffs 53, 54 and 65 pixel for pixel,
+   then 152 of 155 deffs ran to their end). Before writing the runner, list the addresses it needs and where each was found:
+   `task_current`, the task list head, `task_sleep`, `task_create` / exit, the bank register, the constructor table, the
+   dedicated switch table, the rule-record request flag (rom_extraction.md 3.3 has the Transformers values and the traps).
+10. **Every step ends on a number** in the progress report: strict-check failures (never up; Transformers 268, 41, 2, 0), lifts that
+   end / total, matches against independent evidence / total, items a parser read / expected, `FUN_` left, trace checks (never down).
+   "It looks right" is not a result.
+11. **Run, do not infer.** A value that goes through more than one routine (a delay through a chain of tasks, a text through a
+   formatter, a priority through the display queue) is taken from a run of the code, not reasoned from the one routine you read.
+   Transformers: an end-of-ball delay during a ball search, inferred from the search task alone, came 1 s early against its trace.
+12. **Two agents at once** (decoder and recreation on stacked branches): the recreation side sends one batched request per need
+   (ids, tables, offsets, the trace and time that show the gap, and what it does itself); each shared file has one owner, the other
+   merges the owner's branch (never rebases it) before editing and keeps the owner's wording; disputes are settled by the code (see
+   trick 17).
 
 ## 3. Escalation rule
 
 An agent that cannot finish a task (a recipe stuck below 100 % with no code-based reason, a routine it cannot read, a rule it cannot place in the diagram, two failed attempts at the same step) **stops and defers the task to a more capable agent** instead of guessing, approximating from a capture, or marking it done. The hand-over note holds: the effect or rule, the ROM addresses read, what was tried (arguments, state, draws), the measured result, and the exact question. The more capable agent either finishes it or writes the code-based reason; the original agent continues with the rest meanwhile. A capture is never the way out: only the owner can grant a waiver, recorded in `docs/pinmame_waivers.md`.
+
+Additions from Transformers (2026-11-26):
+- **More triggers.** Also stop and defer when a code result and a trace disagree and you cannot explain it from the code in about
+  30 minutes; when the task needs a new tool design rather than running or extending one (a new runner, scheduler, sound FIQ or bank
+  model, an attribution rule); when going on would mean guessing a value, an address or a name; and when you are about to weaken a
+  check, skip a test or mark something "observed" to get past it.
+- **The hand-over is a file**, `docs/handoff/<date>_<topic>.md` in the game repository, with the commands run and their output, so the
+  next agent starts from the evidence, not from a chat summary. Report it as a blocker in the progress report.
+- **What a less capable agent can do alone:** run an existing lift on new ids, extract a table whose reader exists, rerun a recipe
+  with new state or draws, fix a finding whose ROM address and expected value are given, update docs and strict-check declarations.
+  **Defer by default:** writing or changing a code runner; anything in the OS scheduler, FIQ, bank switching or switch dispatcher;
+  a code / trace disagreement. A choice that needs the owner (look, a departure, a waiver) goes to the owner, not to a stronger model.
+- **Close the loop:** the more capable agent writes what it learned back here as a recipe, so the next less capable agent no longer
+  needs to defer for that class of problem.
+
+## 4. Tricks learned on Transformers Pro 1.80 that section 1 does not cover
+
+Transformers (tf_180, 2026-11-24 to 11-26) decoded 153 deffs, 178 leffs, coil times, the service menu and 24 whole scenarios by running
+the ROM's code. The runner itself, effects from game state, whole scenarios, the sound FIQ, flash banks, coil slots, motors, rule records,
+priority drops and the service walk are in [rom_extraction.md](../agents/rom_extraction.md) section 3.3; the tricks below are not.
+Game values are the worked example (addresses in tf_180's game code, which starts at 0x01000000; the OS below it).
+
+| # | Trick | Why it is hard | Method (do this, in order) |
+|---|---|---|---|
+| 14 | **Attribute a caller's task writes to the right effect** | Callers store an effect's arguments into the task `deff_start` returns; when two effects start in one function and the code reuses one variable, a write is easily given to the wrong one | A write belongs to the last `deff_start` before it in the same function, and only until the next one. `task_create` clears the task block (TF: `memset` 0x68 in `task_create` 0x0000aa04), so an offset no caller writes is 0. Package a variant only if the effect's own body loads that offset. TF: the index stored at +0x38 after `deff_start(0x42)` is deff 66's; deff 65 always plays entry 0, and five false variants (and false arguments for five other deffs) went away. |
+| 15 | **Table-driven animations** | The effect picks an animation function from a table by an index; one run exports one animation, and the sounds of the others look "missing" | Find each table and how its index is chosen (task argument, capped counter, random pick with a no-repeat mask, popcount; TF deff 102: 12 minus shots left, capped at 11, the last shot entry 1 via +0x3c). Run every entry as its own variant. The frame players take a sound table: record each entry at its frame, and the chain entry (TF 0x1f, `snd_play_after_if` 0x00025364: play after the running sample ends) as its own op. One row per effect: table, index source with its address, variants, length, sounds. Close it: every sound id those players use is in an op list or proven dead (rom_extraction.md ground rule 5). |
+| 16 | **Values printed live** | A run bakes one value into the frames (a bonus page, a count) | Keep each formatted-print op as a slot keyed by its call site: format, font, position, and the source of each argument (RAM or task offset, cited); run once per page layout (TF deff 25: 24 runs, one per multiplier). The recreation fills the slots from its state. Baked values in packaged frames: none. |
+| 17 | **An effect's length in a trace** | The trace shows the next `deff_start` long before the effect ends | Sum the code's sleeps on the path (TF deff 92: 74 frames x 3 + 40 x 3 + 1 = 343 ticks). In the trace, use the tick the DMD task's function changes, not the next `deff_start`: a background rule may request the next effect while a higher-priority one still holds the display. Convert with the trace's own tick measured on code-counted spans (rom_extraction.md section 4). |
+| 18 | **Order of a rule list** | Rule records are registered at power-up; their order decides which effect wins, and nothing in the image lists it | Read the insert routine (TF 0x00017580: before the first record whose priority is not above its own; all leff rules have priority 0, so each goes to the head) and the constructor walker (TF 0x0002c0c8: last entry first). The list then runs the modules in ascending address order, last registration first within a module. Write it as a table; never invent an order key. |
+| 19 | **Name every function** | Thousands of `FUN_`; a name carried from another game by address or signature is often wrong (ground rule 20) | Fixed rule order, each name with its evidence in a CSV: (1) from the tables: switch handler, task entry (`task_create` argument), event hook, effect / sound / adjustment / audit / message when it is the one clear purpose; (2) wrapper, getter, setter; (3) purpose: calls with constant arguments resolved through the ROM's tables; (4) by hand, one row each. Suffix the low address bits for uniqueness; an OS and a game function sharing low bits get separate names. TF: 2,555 named, zero `FUN_` left. |
+| 20 | **Lamp effect arbitration** | Which lamp effect wins is not a priority alone | Read `leff_start`'s conflict test (TF 0x00007c10): a running leff that shares a lamp of the new one's lamp group, or a coil of its coil group, refuses it when higher (or equal without flag bit 2), else it is killed, and a killed rule leff restarts when it can. From its start a leff owns its group's lamps (cleared in the override planes). Export the lamp and coil group tables (TF 0x040d1510, 0x040cf65c) for the recreation. |
+| 21 | **Sound arbitration** | "Missing" sounds in traces are refused starts | Read the call record (TF 0x14 bytes at 0x040dee08): no-repeat ring (+0x0e), priority (+0x10), take-over flag (+0x11); and each sample's stream script: byte 1 the voice mask, byte 2 the voices taken. The start routine (TF `snd_start_sample` 0x00024ae4) takes free voices first, then the longest-playing slot of lower priority; else the sample does not start. Export both as tables. |
+| 22 | **What is not in the code** | Some game timings include the ball's travel or the recreation engine's device timing | Decode the code part (serve, feed and search tasks, the device table's settle times: TF 0x040d17fc, trough 31 ticks) and label the rest as physics, measured, never "decoded". Write each constant as code part + physics part. |
+| 23 | **Empty actions** | A menu or rule entry whose label promises a screen | Its routine is `bx lr`: in this ROM it does nothing; the recreation does nothing too (TF DISPLAY HELP SCREEN 0x01045a74). |
