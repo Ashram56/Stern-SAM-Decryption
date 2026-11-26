@@ -83,6 +83,13 @@ class T(unittest.TestCase):
             mk(d, {"rom_data/dmd_tick.csv": "game,board,base_hz_source,tick_ms\ng,main,code,16.0\n"})
             self.assertFalse(any("external" in w for w in c.run(d)[1]))
 
+    def test_dmd_ms_empty_when_tick_unknown(self):
+        H = "game,animation_id,class,ticks,ms,end_addr,loop_addr,min_ticks,max_ticks,decider_addr,method,wait_sites\n"
+        row = H + "g,01,finite,10,,fix:7448,,10,10,,exec_hooked,fix:7430:10\n"
+        self.assertEqual(self.run_(self.good(**{"rom_data/dmd_durations.csv": row, "rom_data/dmd_tick.csv": "game,board,tick_ms\ng,x,\n"})), [])
+        f = self.run_(self.good(**{"rom_data/dmd_durations.csv": row, "rom_data/dmd_tick.csv": "game,board,tick_ms\ng,x,16.4\n"}))
+        self.assertTrue(any("ms empty" in m for m in f))
+
     def test_dmd_unmeasured(self):
         H = "game,animation_id,class,ticks,ms,end_addr,loop_addr,min_ticks,max_ticks,decider_addr,method,wait_sites,notes\n"
         with tempfile.TemporaryDirectory() as d:

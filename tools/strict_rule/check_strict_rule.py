@@ -263,12 +263,19 @@ def check_durations(root):
                 fails.append(f"{who}: wait_sites missing (the waits summed, addr:ticks)")
             if cl in ("finite", "loop", "held"):
                 try:
-                    t, ms = int(g("ticks")), float(g("ms"))
+                    t = int(g("ticks"))
                 except ValueError:
-                    fails.append(f"{who}: ticks/ms missing or not numeric"); continue
-                tick = _tick_ms(root, g("game"))
-                if tick and abs(ms - t * tick) > 0.5:
-                    fails.append(f"{who}: ms {ms} != ticks {t} * tick_ms {tick}")
+                    fails.append(f"{who}: ticks missing or not numeric"); continue
+                tick = _tick_ms(root, g("game"), g("board"))
+                if g("ms"):                      # ms may stay empty while the base frequency is unknown (dmd_tick.csv tick_ms empty)
+                    try:
+                        ms = float(g("ms"))
+                    except ValueError:
+                        fails.append(f"{who}: ms not numeric"); continue
+                    if tick and abs(ms - t * tick) > 0.5:
+                        fails.append(f"{who}: ms {ms} != ticks {t} * tick_ms {tick}")
+                elif tick:
+                    fails.append(f"{who}: ms empty although tick_ms {tick} is known")
             if cl == "finite" and not DUR_ADDR.search(g("end_addr")):
                 fails.append(f"{who}: finite without a cited end_addr")
             if cl in ("loop", "held") and not DUR_ADDR.search(g("loop_addr")):
@@ -292,16 +299,16 @@ def check_tick_sources(root):
     return out
 
 
-def _tick_ms(root, game):
+def _tick_ms(root, game, board=""):
     p = os.path.join(root, "rom_data", "dmd_tick.csv")
     if os.path.isfile(p):
         with open(p, newline="", encoding="utf-8", errors="replace") as f:
             for row in csv.DictReader(f):
-                if not game or row.get("game", "") == game:
+                if (not game or row.get("game", "") == game) and (not board or board.lower() in (row.get("board") or "").lower()):
                     try:
                         return float(row["tick_ms"])
                     except (KeyError, ValueError):
-                        pass
+                        return None
     return None
 
 

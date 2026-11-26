@@ -42,13 +42,14 @@ Status of the games (2026-11-26):
 - **LOTR main board (Whitestar, `lotrcpua.a00`)**: the work is done by the **FIRQ** `0xa7c2` (the IRQ `0xa7c1` is `rti`). Divider: `$c2` counts FIRQ modulo 16 (`0xac41-0xac46`), `$c3` is the tick (`0xac4d`); `$17` counts to 10 for the sub-unit `$0265` (`0xac80-0xac86`). FIRQ frequency: `external` (976 Hz quoted from PinMAME; no timer is programmed by the ROM, the board hardware raises it).
 - **LOTR DMD board (`lotrdspa.a00`)**: its own tick is **one FIRQ**: `inc $01` at `0x812e` in the FIRQ handler `0x810e`, which also flips the display page (`$3000/$3001`). Tasks sleep in those frames (`0x81ea`, the `delay` of a script frame, `0x819b` compares with `$01`). The FIRQ is the DMD controller's refresh interrupt, acknowledged by a read of `$3000`; its frequency is not in the ROM: `external` until a schematic or a measurement is cited.
 
-Convert `ms = ticks * tick_ms`; keep `tick_ms` to 3 decimals; where `base_hz_source=external` the `ms` column of `dmd_durations.csv` is provisional and says so in `notes`.
+Convert `ms = ticks * tick_ms`; keep `tick_ms` to 3 decimals; leave `tick_ms` and `ms` **empty** while the base frequency is unknown (ticks stay exact; the check accepts an empty `ms` only then); where `base_hz_source=external` the `ms` column of `dmd_durations.csv` is provisional and says so in `notes`.
 
 ## 3. The file: `rom_data/dmd_durations.csv` (one row per animation, every animation of the game)
 
 | Column | Meaning |
 |---|---|
-| `game`, `animation_id`, `kind` | `deff` / `object` / `sequence` / `screen` |
+| `game`, `animation_id`, `kind` | `kind` = `deff` / `object` / `sequence` / `screen` |
+| `board` (optional) | picks the row of `dmd_tick.csv` when a game has several tick sources (LOTR: DMD controller vs main CPU) |
 | `entry_addr` | ROM address (`bank:addr`) where the animation starts |
 | `class` | `finite` / `loop` (repeats until stopped) / `held` (last frame held until replaced) / `state_dependent` / `empty` (no animation) / `unmeasured` (no tested state accepts the effect; `notes` says why; the check counts them as a WARN until none is left) |
 | `ticks`, `ms` | finite: total; `ms = ticks * tick_ms`. loop: duration of **one cycle**. held: ticks before the held frame. state_dependent: leave empty and fill `min_ticks`, `max_ticks` |
