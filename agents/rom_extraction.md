@@ -927,6 +927,8 @@ start, hardware) in its own `AGENTS.md`; write one for every new ROM. Tron LE 1.
 
 ## 14. Deliverables checklist for the next SAM game
 
+**Where each deliverable goes:** the standard tree is [knowledge/repo_layout.md](../knowledge/repo_layout.md) (docs/, ghidra/, listings/, rom_data/, traces/, dmd/, sounds/, shows/, vpx/, tools/, game/). New game repositories follow it from the first commit; the Tron paths below are its older layout.
+
 This list comes from the agent that built the Tron MPF recreation on top of the Tron asset repo
 (feedback dated 2026-10-04). Produce each item as a table (CSV or JSON) first and prose second, and give
 every row the ROM address it came from and an observed/code/inferred tag.

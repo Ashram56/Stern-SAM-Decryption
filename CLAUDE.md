@@ -19,4 +19,6 @@ platform and board findings) belongs in Ashram56/MPF-Godot-Packaging, not here (
 repositories, not here. Every game-agnostic learning comes back here in the same session, without asking the user: a PR with write
 access, otherwise a GitHub issue (CONTRIBUTING.md).
 
+**Layout of a decoding repository:** [knowledge/repo_layout.md](knowledge/repo_layout.md) (standard tree, where each agent writes; checked by `check_strict_rule.py`, `--layout-strict` on a new game repository).
+
 @agents/README.md

@@ -61,5 +61,21 @@ class T(unittest.TestCase):
         self.assertTrue(any("diagram" in m for m in self.run_(self.good(**{"game/a.py": "x"}))))
 
 
+    def test_rom_file_fails_and_exception_passes(self):
+        f = self.good(**{"rom/game.a00": "x"})
+        self.assertTrue(any("game.a00" in m for m in self.run_(f)))
+        f["docs/rom_exceptions.md"] = "- `rom/game.a00` approved by Vincent 2026-11-26\n"
+        self.assertEqual(self.run_(f), [])
+
+    def test_layout_warns_then_strict_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            mk(d, self.good(**{"mpf/x.yaml": "a: 1"}))
+            fails, warns = c.run(d)
+            self.assertEqual(fails, [])
+            self.assertTrue(any("mpf/" in w and "game/" in w for w in warns))
+            fails, _ = c.run(d, layout_strict=True)
+            self.assertTrue(any(m.startswith("layout:") for m in fails))
+
+
 if __name__ == "__main__":
     unittest.main()

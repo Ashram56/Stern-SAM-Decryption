@@ -13,6 +13,10 @@ Checks (each failure is printed as FAIL, heuristics as WARN):
      10 lines of a text file (a show file, a YAML table). Reference traces (dirs traces/, captures/) are confirm-only and are skipped.
   4. If game code exists (game/ with a non-doc file), docs/functional_diagram.md (or docs/flow/) exists and
      cites ROM addresses: agent C codes nothing before agent A's diagram.
+  5. Repository layout (knowledge/repo_layout.md): FAIL when a ROM image is committed (extension .rom .bin .zip .nv .7z .snd,
+     or .aNN / .uNN), unless listed in docs/rom_exceptions.md with "approved by Vincent <date>". Everything else of the standard
+     tree (required docs, rom_data/README.md, .gitignore ROM patterns, folder names, traces outside rom_data/) is a WARN;
+     `--layout-strict` turns those warnings into failures (use it on a new game repository).
 """
 import csv, json, os, re, sys
 
@@ -157,6 +161,58 @@ def check_diagram(root):
     return []
 
 
+ROM_EXT = (".rom", ".bin", ".zip", ".nv", ".7z", ".snd")
+ROM_RE = re.compile(r"\.[au]\d{1,2}$|\.\d{3}$", re.I)       # lotr.a00, lotr-u7.101 (not .csv/.md)
+STD_TOP = {"docs", "ghidra", "listings", "rom_data", "traces", "scenarios", "dmd", "sounds", "shows", "vpx", "tools",
+           "tests", "game", "scripts", "rom", ".github"}
+LEGACY_TOP = {"mpf": "game/", "rules": "docs/rules/", "io": "rom_data/io/", "mpf_package": "game/ or dmd/ + sounds/ + shows/",
+              "work": "docs/ or scratch (not versioned)"}
+GITIGNORE_ROM = ("*.rom", "*.zip")
+
+
+def rom_exceptions(root):
+    p = os.path.join(root, "docs", "rom_exceptions.md")
+    ok = set()
+    if os.path.isfile(p):
+        for line in open(p, encoding="utf-8", errors="replace"):
+            m = re.search(r"`([^`]+)`.*approved by Vincent\s+\d{4}-\d{2}-\d{2}", line, re.I)
+            if m:
+                ok.add(m.group(1).strip("/"))
+    return ok
+
+
+def check_roms(root):
+    ok, out = rom_exceptions(root), []
+    for p in walk(root):
+        rel = os.path.relpath(p, root).replace(os.sep, "/")
+        low = rel.lower()
+        if (low.endswith(ROM_EXT) or ROM_RE.search(low)) and not any(rel == w or rel.startswith(w + "/") for w in ok):
+            out.append(f"{rel}: looks like a ROM image or archive; ROMs are never committed (list it in docs/rom_exceptions.md only with the owner's approval)")
+    return out
+
+
+def layout_warnings(root):
+    out = []
+    top = {d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d)) and not d.startswith(".git") or d == ".github"}
+    for d in sorted(top - STD_TOP - {"rom"}):
+        out.append(f"layout: top-level '{d}/' is not in the standard tree" + (f" (use {LEGACY_TOP[d]})" if d in LEGACY_TOP else " (knowledge/repo_layout.md)"))
+    for rel in ("README.md", "docs/rom_first_look.md", "rom_data/README.md", "tools"):
+        if not os.path.exists(os.path.join(root, rel)):
+            out.append(f"layout: {rel} missing")
+    gi = os.path.join(root, ".gitignore")
+    txt = open(gi, encoding="utf-8", errors="replace").read() if os.path.isfile(gi) else ""
+    for pat in GITIGNORE_ROM:
+        if pat not in txt:
+            out.append(f"layout: .gitignore lacks the ROM pattern {pat}")
+    if os.path.isdir(os.path.join(root, "rom_data", "traces")):
+        out.append("layout: rom_data/traces/ -> traces/ (traces confirm, they are not decoded data)")
+    if os.path.isfile(os.path.join(root, "docs", "functional_diagram.md")) or os.path.isdir(os.path.join(root, "docs", "flow")):
+        pass
+    elif os.path.isdir(os.path.join(root, "game")):
+        out.append("layout: game/ without docs/functional_diagram.md or docs/flow/")
+    return out
+
+
 def warnings(root):
     out = []
     for p in walk(os.path.join(root, "game")):
@@ -165,14 +221,18 @@ def warnings(root):
     return out
 
 
-def run(root):
-    fails = check_rule_text(root) + check_inventory(root) + check_sources(root) + check_diagram(root)
-    return fails, warnings(root)
+def run(root, layout_strict=False):
+    fails = check_rule_text(root) + check_inventory(root) + check_sources(root) + check_diagram(root) + check_roms(root)
+    warns = warnings(root) + layout_warnings(root)
+    if layout_strict:
+        fails, warns = fails + [w for w in warns if w.startswith("layout:")], [w for w in warns if not w.startswith("layout:")]
+    return fails, warns
 
 
 if __name__ == "__main__":
-    root = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
-    fails, warns = run(root)
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    root = os.path.abspath(args[0] if args else ".")
+    fails, warns = run(root, "--layout-strict" in sys.argv)
     for w in warns:
         print("WARN", w)
     for f in fails:
