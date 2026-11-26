@@ -325,6 +325,48 @@ tracer; a deff that lowers its own priority must really write it, or the next di
 wait on "display free" runs long; and treat each `random_below` draw as an input of the run (the side drawn at
 game start decides half the rules): declare it in the scenario as a comment line the tracer ignores.
 
+**Sound FIQ, coil slots and motors in the runner (Transformers, 2026-11-26).** Chained sounds (a call whose
+channel script starts the next call when its voices end), the eject "warning" steps that wait on them, and the
+coil end callbacks only happen if their OS code runs, so run it rather than answer it in Python:
+- *Sound FIQ.* Call the mixer (TF `snd_fiq_mix` 0x000261fc) 64 times per 16 ms tick while any of the 8 channels is
+  active; save and restore the 24-byte output buffer (0x0109f000) around the batch. Channel scripts are opcode tables
+  (TF 0x0003249c): opcode 0 frees the channel, one opcode waits while the channel's voices play; a voice ends when
+  its position reaches the length word at the head of the sample. Record the calls the FIQ starts apart from the
+  game's own (`sound_chain`), or every music loop counts as a game sound.
+- *Flash banks.* The sound code writes the bank register (0x02580000) **directly**, not only through the OS bank
+  routine: hook that write. It switches banks about 2,000 times a tick, so copying 8 MB per switch is far too slow:
+  map the 0x04800000 window as MMIO (a read callback into the ROM image at bank x 0x800000) during the FIQ batch
+  only, and as host memory (`mem_map_ptr` on a buffer per bank) otherwise. Never `mem_unmap` inside a Unicorn hook
+  (segfault): switch the mapping between calls.
+- *Coil slots.* Let the OS pulse routines run (pulse now, queue a pulse, fill a slot); end each slot when its time
+  is over (n ms is over for the main loop n // 16 + 1 ticks later), calling its end callback (slot +4), which may
+  keep it. The queued-pulse list is served once a tick (TF `coil_pulse_queue_serve` 0x00003758): the head starts
+  when no queued pulse runs, and when one ends a hold-off of 6 makes the next start 7 ticks later.
+- *Motors.* The OS motor class (TF vtable 0x000339d4) polls its position switches every 1 ms (2 polls to settle)
+  and gives up after the limit its timeout method returns (TF 468 ticks = 7.49 s). A tracer without a motor model
+  shows exactly that limit as the "run time": check before calling it the motor's speed.
+
+**Rule records and effect starters.** Many display and lamp effects have no `deff_start(constant)` caller:
+- *Task entry stubs.* Small task entries that Ghidra does not split out set r0 (the effect) and r1 (a time), then
+  branch (`b`, not `bl`) to a "start when free" helper. Scan every `b` / `bl` to the effect-start routines for the
+  immediate last moved into r0, conditional moves included.
+- *RAM rule records.* The game builds rule records in RAM at power-up (TF vtables 0x00033dd4 background deff:
+  condition, deff, sound, adjust routine; 0x00033dfc rule leff: condition, leff). The OS evaluates them each tick
+  when the game state is 0 or matches the record's mask. Read them from RAM after a run's game start; the ROM holds
+  only their constructors.
+- *Queued requests* carry the effect id in the request record (+0x68).
+Whatever is still unmatched after these and the scenario code runs is very likely unreachable (TF: 10 of 155 deffs,
+leff 149: no reference anywhere in the image).
+
+**Which tasks survive the end of ball.** The OS kills tasks with `task_kill(0, keep_mask)`: every task whose flags
+miss the mask (TF: ball start 0x80, end of ball 0x100, game start 0x400, tilt 0x1000). A leff task's flags come from
+its leff table entry (TF 0x040cfe00 + 12 x id, flags at +4: bit 2 set gives 0x22, bit 0 gives 0x122, else 0x2022),
+so whether a lamp effect outlives the bonus is in that table, not in the rule.
+
+**The OS loop period.** The per-tick OS work routine runs once per change of the tick counter (the IO interrupt
+divides by 64: 16.0 ms). Every task-wait loop (task sleep, display waits) inlines the same check, so it can skip
+ticks but never runs faster: a counter it decrements is in 16 ms units.
+
 ### 3.4 Pinball Asset Decryptor: first look and independent cross-check
 [davidvanderburgh/pinball-asset-decryptor](https://github.com/davidvanderburgh/pinball-asset-decryptor)
 (MIT, desktop app for Windows, macOS and Linux, releases page; or run from source) reads a SAM code update
