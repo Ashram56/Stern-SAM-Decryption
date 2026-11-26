@@ -371,7 +371,7 @@ ticks but never runs faster: a counter it decrements is in 16 ms units.
 Three facts the recreation needs and that a capture hides (Transformers, 2026-11-26):
 - The rule records (background deffs, rule leffs) are not evaluated every tick. A request routine sets one
   RAM flag (Transformers: set_dat_000315fc [0x00017650]), and the per-tick routine walks the record lists
-  once when the flag is set (0x00017664). Some 60 routines request it (deff starts, timers, event hooks).
+  once when the flag is set (0x00017664). Dozens of routines request it (deff starts, timers, event hooks).
   A RAM poke in a scenario makes no request. A rule leff refused because a stronger leff holds the
   outputs starts at that leff's end, with the walk's caller as its caller.
 - Many deffs lower their own priority (Transformers: to 32) near their end, through the deff priority
