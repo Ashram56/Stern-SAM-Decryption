@@ -75,6 +75,18 @@ the same day).
 
 ## 0. Ground rules that saved (or would have saved) the most time
 
+0. **STRICT RULE: DECOMPILE EVERYTHING (owner, 2026-11-24).** Step zero for every game, before any other step: write
+   `docs/boards_inventory.md` (template `knowledge/templates/boards_inventory.md`), one row per board with its own CPU, MCU, ROM
+   or firmware (main, DMD, sound, anything else), with its ROM and a state `complet` / `partiel` / `absent`; decompile main ROM and
+   every board until all are `complet` (Ghidra: section 3.1). The code must cover scores, displays, inserts, coils and sounds; every datum
+   the code sends that you do not understand is traced to its destination and function. No rule, value, image or DMD render comes from a
+   PinMAME capture or trace (they confirm only); a last-resort exception needs the owner's prior approval, recorded in
+   `docs/pinmame_waivers.md`. Deliver the visual diagram (one ROM address per node) before C codes. Check with
+   `tools/strict_rule/check_strict_rule.py` (copy into the game repo as `tools/check_strict_rule.py`). Any file still built from
+   a capture says so where the check reads it (a `source` / `*_source` column or key, a `capture` key, or a header
+   comment "captured in the emulator"), so the check lists it; Transformers Pro 1.80 had 153 deff captures, 111 leff shows and
+   the coil times measured in the emulator that no column declared (found 2026-11-25). Why: LOTR's sound board was never
+   decompiled and its DMD board only in part, so display values and bonus timings were built from captures and came out wrong.
 1. **Use the ROM's own fields to check your output.** The sound export was wrong for a day (wrong
    rate, truncated clips) until someone compared each WAV's length with the length the ROM stores for
    that sample. Any time the ROM stores a size, count, duration or checksum, compare against it.
@@ -154,6 +166,19 @@ the same day).
     traces; traces and rulesheets only confirm. On Lord of the Rings C built from traces before this existed, and
     the owner found a dozen wrong or missing rules (souls, member collection, credits screen, coin sound, music);
     Terminator 2 did the diagram first.
+    The delivery includes the display effect scheduler (per effect: object, priority, queue or drop, how long its
+    script holds the display: walk every path of the script, both ways at each conditional branch, and sum its
+    sleeps; when the paths differ, name the RAM the branch tests so C passes the length its state picks; a path that
+    loops back is a counted loop or a wait, so its sum is too short: run it instead, see below; LOTR: 57 of 178
+    scripts branch, most to the same length) and the routines every mode shares (blocking-task gates, the common switch award,
+    the ball-in-play award, the multiball end), each read in the disassembly: on LOTR a third of the differences a
+    later audit found were errors in the rule sheets themselves, so have a second session re-read each sheet
+    against the disassembly before C codes from it. Add a flow chart per mode for the owner (recreation.md 6).
+    Lamp shows and looping scripts: run the OS task itself on a CPU emulator (6809: PyPI `MC6809`; ARM for SAM:
+    unicorn) with the ROM mapped, stop it at each OS sleep call (record the lamp bit maps, advance the tick count),
+    switch banks at the far-call stub, and end at the task-exit routine. LOTR `tools/leff_emu.py`: all 77 lamp
+    effects and every display script in 9 s, the frames of 26 one-shot shows, the tick each script starts its lamp
+    show, and the length of 18 looping scripts; a loop counted by game RAM takes the RAM you set (zero by default).
 
 ---
 
@@ -265,6 +290,111 @@ fake 16 ms clock and continue) produced exact colour/fade/timing sequences far f
 emulation. Good for any effect that only calls a few OS functions; use full PinMAME when the effect
 reads game state.
 
+**Since the strict rule (2026-11-24) this is the main way to decode effects** (code, Transformers tf_180,
+2026-11-25: 117 of 153 deffs, all 178 leffs, 15 adjustment formatters). Load the whole ROM image in Unicorn (no
+machine emulator: the OS, the game code, RAM initialised from the ROM bytes), run the effect's own function, and
+answer in Python only the OS services that need a machine: `task_sleep` and the task calls (a small cooperative
+scheduler: each task its own context, `context_save` on sleep), sound, deff / leff starts, the flash bank switch.
+Let everything else run as ROM code: the text helpers, `msg_get`, `vsprintf`, the lamp library and its layers,
+the status panel. Record the display primitives (fill, rect, copy, bitmap, text, show, remap, dissolve) as an op
+list with the return address of each call, and draw it with the primitives re-implemented from their routines.
+What cost time, in order: the right `task_current` RAM address (a wrong one gives garbage task structs); the
+bank switch routine (fonts and images in banked flash read as unmapped without it); task struct and stack areas
+apart from the OS's; a sound routine that retries until it returns 1; the lamp layer pool, filled by a boot init
+routine that must be called first; a memory hook on the DMD pages to catch a primitive you have not modelled.
+Compare with any old capture: on Transformers 84 deffs matched every captured frame, the rest differed only by
+game state (side, shots left, value texts).
+**Effects drawn from game state: one run per state the caller sets.** List the words each caller stores into
+the task `deff_start` returns (`*(T *)(task + 0x30) = ...`, then +0x34 ...): grep the decompile for the store
+after each `deff_start(id, ..)`. Write them into the task struct before the first instruction, and write the RAM
+the effect reads (a counter, a per-player array, a record with a checksum, recomputed with the OS's own sum
+routine) before the run; a `random_below` answers one value per run. Cite each state to the routine that sets it,
+package the first run and keep the others' op lists next to it. On Transformers (2026-11-25) this decoded the
+last 38 of 153 deffs: battle displays (shots left at their start count), tournament screens (a valid tournament
+record), high-score and initials entry (the 0x24-byte record the caller builds on its stack, read field by field
+from the deff), jackpot videos (one run per random pick). Two traps: an effect started from inside another one
+draws on the work pages that one allocated (set the work page variables to a real pair, or the fg and bg are the
+same page); and the OS edit cursor writes the page directly (TF `0x0002b808`, invert a box: 0 <-> 0xf), so catch
+it with the page-write hook and model it as one more primitive. A captured frame of a forced effect often is
+not that effect at all (forced without its arguments, it ended at once and the capture shows what was under it).
+Two lessons: a captured loop "period" can be wrong (leff 1: the capture said 4819 ms, the code's exact cycle is
+4220 ticks), and the OS tick is 64 IO interrupts of 250 us = 16.0 ms nominal while the emulator measures about
+16.26 ms per pass (the pass runs late): say which one a timing uses.
+
+**Whole scenarios in the ROM's code (rules, not only effects).** The same runner can play a game: run the
+module constructors first (`__do_global_ctors`: every rule module registers its event hooks there; without it the
+values set at ball start stay 0), call `game_init`, clear the "starting" game-state bit as the start-button
+handler does, then each 16 ms tick do what the OS main loop does (the per-tick OS work routine: event 0x20, display
+queue, lamp compositor, sounds, switch debounce; then every task due; then the end-of-tick hooks), and feed the
+reference scenario's inputs (switch edges decided as the switch dispatcher does: the record's edge and game-state
+mask, task id and arguments) with the tracer's ball model. Compare each scenario mark with its trace: on
+Transformers (2026-11-25) 24 scenarios, points equal on 260 of 262 marks. What it took, in order: keep the OS
+task list yourself (the OS's own "is task running / kill range / first in range" walk it); run the task exit path
+with its exit calls (the per-task call slots at +0x48: they reset things such as the playfield multiplier); stop
+answering game state in Python (current player, side, flipper buttons): let the ROM read its RAM, or a two-player
+game silently stays one-player; dedicated switches (flippers, tilt, coins, numbers 0x81..) have their records in
+a second table (TF: 0x040e3740, found in the switch-record lookup routine); insert coins before START like the
+tracer; a deff that lowers its own priority must really write it, or the next display never replaces it and every
+wait on "display free" runs long; and treat each `random_below` draw as an input of the run (the side drawn at
+game start decides half the rules): declare it in the scenario as a comment line the tracer ignores.
+
+**Sound FIQ, coil slots and motors in the runner (Transformers, 2026-11-26).** Chained sounds (a call whose
+channel script starts the next call when its voices end), the eject "warning" steps that wait on them, and the
+coil end callbacks only happen if their OS code runs, so run it rather than answer it in Python:
+- *Sound FIQ.* Call the mixer (TF `snd_fiq_mix` 0x000261fc) 64 times per 16 ms tick while any of the 8 channels is
+  active; save and restore the 24-byte output buffer (0x0109f000) around the batch. Channel scripts are opcode tables
+  (TF 0x0003249c): opcode 0 frees the channel, one opcode waits while the channel's voices play; a voice ends when
+  its position reaches the length word at the head of the sample. Record the calls the FIQ starts apart from the
+  game's own (`sound_chain`), or every music loop counts as a game sound.
+- *Flash banks.* The sound code writes the bank register (0x02580000) **directly**, not only through the OS bank
+  routine: hook that write. It switches banks over 100,000 times in one scenario, so copying 8 MB per switch is far too slow:
+  map the 0x04800000 window as MMIO (a read callback into the ROM image at bank x 0x800000) during the FIQ batch
+  only, and as host memory (`mem_map_ptr` on a buffer per bank) otherwise. Never `mem_unmap` inside a Unicorn hook
+  (segfault): switch the mapping between calls.
+- *Coil slots.* Let the OS pulse routines run (pulse now, queue a pulse, fill a slot); end each slot when its time
+  is over (n ms is over for the main loop n // 16 + 1 ticks later), calling its end callback (slot +4), which may
+  keep it. The queued-pulse list is served once a tick (TF `coil_pulse_queue_serve` 0x00003758): the head starts
+  when no queued pulse runs, and when one ends a hold-off of 6 makes the next start 7 ticks later.
+- *Motors.* The OS motor class (TF vtable 0x000339d4) polls its position switches every 1 ms (2 polls to settle)
+  and gives up after the limit its timeout method returns (TF 468 ticks = 7.49 s). A tracer without a motor model
+  shows exactly that limit as the "run time": check before calling it the motor's speed.
+
+**Rule records and effect starters.** Many display and lamp effects have no `deff_start(constant)` caller:
+- *Task entry stubs.* Small task entries that Ghidra does not split out set r0 (the effect) and r1 (a time), then
+  branch (`b`, not `bl`) to a "start when free" helper. Scan every `b` / `bl` to the effect-start routines for the
+  immediate last moved into r0, conditional moves included.
+- *RAM rule records.* The game builds rule records in RAM at power-up (TF vtables 0x00033dd4 background deff:
+  condition, deff, sound, adjust routine; 0x00033dfc rule leff: condition, leff). The OS evaluates them each tick
+  when the game state is 0 or matches the record's mask. Read them from RAM after a run's game start; the ROM holds
+  only their constructors.
+- *Queued requests* carry the effect id in the request record (+0x68).
+Whatever is still unmatched after these and the scenario code runs is very likely unreachable (TF: 10 of 155 deffs,
+leff 149: no reference anywhere in the image).
+
+**Which tasks survive the end of ball.** The OS kills tasks with `task_kill(0, keep_mask)`: every task whose flags
+miss the mask (TF: ball start 0x80, end of ball 0x100, game start 0x400, tilt 0x1000). A leff task's flags come from
+its leff table entry (TF 0x040cfe00 + 12 x id, flags at +4: bit 2 set gives 0x22, bit 0 gives 0x122, else 0x2022),
+so whether a lamp effect outlives the bonus is in that table, not in the rule.
+
+**The OS loop period.** The per-tick OS work routine runs once per change of the tick counter (the IO interrupt
+divides by 64: 16.0 ms). Every task-wait loop (task sleep, display waits) inlines the same check, so it can skip
+ticks but never runs faster: a counter it decrements is in 16 ms units.
+
+**Rule records run on request, effects lower their own priority, and the service menu can be walked in code.**
+Three facts the recreation needs and that a capture hides (Transformers, 2026-11-26):
+- The rule records (background deffs, rule leffs) are not evaluated every tick. A request routine sets one
+  RAM flag (Transformers: set_dat_000315fc [0x00017650]), and the per-tick routine walks the record lists
+  once when the flag is set (0x00017664). Dozens of routines request it (deff starts, timers, event hooks).
+  A RAM poke in a scenario makes no request. A rule leff refused because a stronger leff holds the
+  outputs starts at that leff's end, with the walk's caller as its caller.
+- Many deffs lower their own priority (Transformers: to 32) near their end, through the deff priority
+  sleep. From that tick the waiting effect or the score deff takes the DMD, while the deff's task (and the
+  leff it stops on exit) runs on. Package the change with its tick (`priority_changes`), not only the
+  run's end.
+- The service menu: run the ROM in the scenario runner, press the coin-door buttons, and record the
+  texts each screen draws. A walk with PLUS until the first item repeats, then SELECT and BACK, gives the
+  whole visible tree in code; resync after BACK, since a help screen can go up two levels.
+
 ### 3.4 Pinball Asset Decryptor: first look and independent cross-check
 [davidvanderburgh/pinball-asset-decryptor](https://github.com/davidvanderburgh/pinball-asset-decryptor)
 (MIT, desktop app for Windows, macOS and Linux, releases page; or run from source) reads a SAM code update
@@ -343,10 +473,14 @@ This took longer than anything else on day one. Checklist:
     line; match on a pid file or an exact binary name.
 11. **Lamps.** libpinmame lamp numbers 1-80 equal the ROM's lamp table numbers; 101+ are extra outputs
    PinMAME synthesises (Tron's RGB tubes are 101-106).
-12. **Timing.** One OS tick is about **16.26 ms** in play (measured 16.25-16.30). The ROM itself
-   treats 62 ticks as a "second", and some countdowns use 60, 64, 66 or 68. Give specs in ticks and ms.
-   The main loop is paced from the 250 µs IO interrupt (a counter that steps every 64 IO ticks, 16.0 ms
-   nominal; section 8.2); the measured pass interval is a little longer because a pass can overrun.
+12. **Timing.** The OS tick is **16.0 ms** in the code (64 IO ticks of 250 µs; section 8.2): a recreation runs
+   on that. In a PinMAME reference trace a tick lasts a little longer, because a pass can overrun; measure it on a
+   long span the code counts exactly (a mode timer's seconds, a deff whose ticks are known), never on mixed
+   spans. Tron measured 16.26 ms (16.25-16.30); Transformers 1.80 is 16.15 ms (44 battle seconds of 66 ticks in
+   46.93 s; a 343-tick deff in 5.539 s), and replaying its traces at 16.26 drifted 0.3 s over one battle and
+   gave a false extra bonus. A trace replay scales its waits by 16.0 / measured tick and writes the game's times
+   back in reference seconds. The ROM treats 62 ticks as a "second", and some countdowns use 60, 64, 66 or 68.
+   Give specs in ticks and ms.
 13. **PinMAME's "4008 Hz" is the sound FIQ, not the IO tick.** The IO tick is a CPU timer (TC0) at
    exactly 4000 Hz. Don't take timer rates from PinMAME comments; read the timer setup in the ROM.
 
@@ -432,7 +566,7 @@ addresses fall in `0x04000000-0x04800000`; on TF it gave every table at once.
 | Switch descriptors | `0x040f3574` | 32 B per switch, index i = switch i+1; `+0` handler fn, `+8` name ptr, `+0x10` flags (bit `0x80` on NC optos?), `+0x1b` / `+0x1c` debounce passes to close / open (section 8.2) | Search for pointers to the switch-test name strings ("TROUGH #1"); the stride between them gives the record size. |
 | Coil names | `0x040e0c00` (24 B) | name | Search for the coil test names. |
 | Coil descriptors | `0x040e0f60` (28 B, indexed by coil number, record 0 = INVALID; pointer at RAM `0x36c48`) | `+0` flags (`0x2` drivable with HV off, `0x4` flasher, `0x400` skipped by the cycling test, `0x800` hidden from test), `+0x10` coil-test ms, `+0x12` ball-search ms, `+0x14`/`+0x16` wire colour msg ids | Indexed by the coil test. Read the flags as a little-endian u32 (an early CSV byte-swapped them and was off by one coil). |
-| Coil rules | flippers `0x040e204c`, bumpers `0x040f0a5c`, slings `0x040f0a8c` | pulse ms, then hold pattern (Tron flippers: 40 ms, then 1 ms on / 11 ms off) | The coil driver ticks every 1 ms and supports a pulse, a 32-bit pattern, or on/off PWM. Decoded in `rom_data/io/`. |
+| Coil rules | flippers `0x040e204c`, bumpers `0x040f0a5c`, slings `0x040f0a8c` | pulse ms, then hold pattern (Tron flippers: 40 ms, then 1 ms on / 11 ms off) | The coil driver ticks every 1 ms and supports a pulse, a 32-bit pattern, or on/off PWM. Decoded in `rom_data/io/`. **Find the flipper table from the OS routine that builds the flipper driver records** (0x40 bytes each, array pointer and count in RAM, rebuilt from a `{entries, count, stride}` array; Transformers 1.80: `coil_init_6194` [0x00006194], called by a start-up event hook of the game code with the array 0x00030b9c -> 0x040cf590), not from the OS ball-device list, which is empty on some games and once led to "no flipper drive in the CPU code". Entry (12 B): id, button switch, alternate button, coil, -, EOS switch, pulse ms, EOS cut ms, hold on ms, hold off ms. In the 1 ms pass: an EOS that opens during the pulse cuts it when at most `EOS cut` ms are left, and a cut pulse that ends on a closed EOS pulses again (at most 2); the records' hold phases are staggered (record i starts at i x (on + off) / n ms). Check it by running the IO interrupt as ROM code with the dedicated switch register set (Transformers: `rom/tools/flipper_drive.py`). |
 | Shaker strengths | `0x040d3998` | ms per strength (200 / 384 / 1024) | Argument table of `shaker_run`. |
 | Fonts | RAM `0x36f48`, count `0x36f44` | 20 B: `+0` char-range list, `+4` glyph table (8 B each: image ptr, s16 x off, s16 y off), `+8` height, `+0xa` spacing, `+0xc` masked, `+0x10` bank | The text renderer `text_draw_str` loads it. Tron: 44 fonts (`rom_data/fonts.json`). |
 | Lamp names | `0x040e2bf4` | | Lamp test names. Lamp letter order may be the **reverse** of switch letter order (Tron: lamp 1 = TRO(N), switch 1 = (T)RON). |
@@ -642,6 +776,13 @@ their own times (Tron descriptor `+0x10` / `+0x12`), which differ from what game
    `pwm` settings, `allow_enable` for motors and relays), and say which values came from the ROM and
    which are platform choices.
 
+**Pops and slingshots are OS device tables** (code, Transformers tf_180): the IO interrupt's 1 ms pass
+(every 4 interrupts of 250 us) fires them itself, no game call. Pops: 12-byte records `{u16 on ms, u16 dead ms,
+u8 debounce, -, u8 switch, u8 coil, ...}` (tf_180 `0x040ddfb0`, set up by `0x2c3c`); slings: 8-byte records
+`{u16 on ms, u16 dead ms, u8 switch, u8 coil}` (`0x040ddfe0`, `0x3148`). Code 32 / 64 ms; the emulator had
+measured 34 / 67 ms, 2-3 ms too long: take the table, not the measurement. When scanning call sites for constant arguments, disassemble word by
+word (capstone stops at the first literal word) and follow `mov r0, r4` back to the constant.
+
 **Lessons from doing this on Tron:**
 - **Zero-cross sync.** Many kicks pass `sync = 1`, which waits for the next AC zero-cross edge (Tron:
   input bit 2 of `*(0x37350)`, 60 per second) before firing. A 64 ms request then measures about
@@ -658,6 +799,31 @@ their own times (Tron descriptor `+0x10` / `+0x12`), which differ from what game
   code-only, and say how they could be measured (a different setting, a poke, real hardware).
 - **API variants.** The driver API has plain pulse, pulse-and-wait, pattern, PWM and serialised-queue
   variants (Tron `0x2bc8`, `0x2cb0`, `0x2d18`, `0x2e5c`, `0x2b60`); hook all of them, or calls slip through.
+- **Flasher PWM against traces.** A PinMAME trace records a coil through libpinmame's solenoid callback,
+  which smooths PWM: a flasher breathing on a 16-bit pattern (1 to 8 bits of 16) is one `sol_on` for the whole
+  breath, not one per pulse. The rebuild drives the pattern as the pulse's power (bits / 16; MPF
+  `pulse_power`), and its trace must log a coil the same way (a coil off for less than about 0.1 s is still
+  the same "on"), or every window of a breathing flasher reads as a mismatch. Lord of the Rings: task loops
+  restart a breathing effect whenever it is not running (Escape, Balrog hurry-up, Destroy the Ring); with
+  per-pulse logging the trace net dropped from 9 to 3 matching windows, with smoothed logging it rose to 10.
+- **Confirm a parametric screen in a real run.** A render made by injecting an effect's parameter bytes
+  can show no change when the board draws them only in some state the injection does not reach (a blink
+  phase, a running effect's redraw). Before writing "these bytes change nothing", capture the effect in a
+  real emulator run of the mode and compare. Lord of the Rings: the ROTK screen 0x3C looked unchanged by its
+  4 bytes in injected renders; a real PinMAME multiball run showed each byte drawn as "NX" in its column,
+  0 blanking the column.
+- **Decompile the display board's ROM too, and port it.** On a game whose display has its own CPU and ROM
+  (Whitestar, WPC DMD with its own board), the screens are that ROM's code: the game CPU sends only packets (an
+  object id and parameter bytes, score and status messages). Captures never cover every parameter and state, so
+  the owner ruled that the display is rebuilt from the board's decompiled code. Port its memory map, layer and
+  task records, script VM, draw modes, fonts and text formatter, transitions and packet handlers with the ROM's own
+  addresses and RAM layout, so each routine runs next to the ROM's on a CPU core and must agree on random states
+  (the core checks; it is never the source). Then find each packet's send site in the main ROM: the packet queues
+  it writes before the link routine (LOTR: status queue 0x0616 and object queue 0x05D6, opcode stored minus 0x80,
+  bit 7 set when copied, written to the latch 0x3600) give every opcode its routine and the RAM each byte comes
+  from; a value the screen shows (the replay level, team totals) is then read from the code, not guessed.
+  Lord of the Rings: 103 script routines and 6 transitions agree with the 6809 core; the send sites gave the
+  replay line (20,000,000 from the defaults list) and showed two score records are team totals, both wrong before.
 
 **Tron worked example** (`rom_data/io/coils.csv`, `coil_calls.csv`, `coil_rules.json`; commit 8cd7439):
 
@@ -891,6 +1057,7 @@ start, hardware) in its own `AGENTS.md`; write one for every new ROM. Tron LE 1.
 
 (Section 14 is the checklist of what the result must contain.)
 
+0. **Boards inventory** (section 0, rule 0): `docs/boards_inventory.md`, every independent board listed; none is skipped.
 1. Identify the set; map memory; entropy scan. Run Pinball Asset Decryptor on the image for a first look
    at its sounds, pictures and frames (section 3.4).
 2. Build libpinmame with the hook; get a game started (section 4). Find `task_sleep`.
@@ -913,6 +1080,8 @@ start, hardware) in its own `AGENTS.md`; write one for every new ROM. Tron LE 1.
 ---
 
 ## 14. Deliverables checklist for the next SAM game
+
+**Where each deliverable goes:** the standard tree is [knowledge/repo_layout.md](../knowledge/repo_layout.md) (docs/, ghidra/, listings/, rom_data/, traces/, dmd/, sounds/, shows/, vpx/, tools/, game/). New game repositories follow it from the first commit; the Tron paths below are its older layout.
 
 This list comes from the agent that built the Tron MPF recreation on top of the Tron asset repo
 (feedback dated 2026-10-04). Produce each item as a table (CSV or JSON) first and prose second, and give

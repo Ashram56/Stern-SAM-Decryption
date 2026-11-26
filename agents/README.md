@@ -141,6 +141,8 @@ Agents A and B: the file in `agents/` of Ashram56/Stern-SAM-Decryption. Agents C
 
 ## 5. Rules every agent follows
 
+- **STRICT RULE: DECOMPILE EVERYTHING** (owner, 2026-11-24; full text at the top of `CLAUDE.md`). Step zero of A: `docs/boards_inventory.md` (template: `knowledge/templates/boards_inventory.md`) lists every board with its own CPU / MCU / ROM; main ROM and every such board are decompiled `complet`; rules cite ROM addresses; no coding from emulator captures (PinMAME frames, renders, traces) without the owner's prior approval; C codes nothing before A's visual diagram. Checked by `tools/strict_rule/check_strict_rule.py` (copy it into each game repository as `tools/check_strict_rule.py`).
+
 - **Feed the knowledge base back, always** ([CONTRIBUTING.md](../CONTRIBUTING.md)). Every agent that uses these
   repositories, on any game, reports every game-agnostic learning to the one that owns the topic in the same session
   without being asked: a **pull request** when it (or the owner it works for) has write access there, else
