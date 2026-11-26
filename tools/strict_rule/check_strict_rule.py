@@ -224,7 +224,7 @@ def warnings(root):
 
 
 DUR_COLS = ("game", "animation_id", "class", "ticks", "ms", "end_addr", "loop_addr", "min_ticks", "max_ticks", "decider_addr", "method", "wait_sites")
-DUR_CLASSES = ("finite", "loop", "held", "state_dependent", "empty")
+DUR_CLASSES = ("finite", "loop", "held", "state_dependent", "empty", "unmeasured")
 DUR_METHODS = ("exec_hooked", "static_path", "both")
 
 
@@ -235,7 +235,7 @@ def check_durations(root):
     if not os.path.isfile(p):
         has = os.path.isdir(rd) and any(re.match(r"dmd_(?:.*effects.*|deff.*|animations)\.csv$", n) for n in os.listdir(rd))
         return [], (["dmd: DMD effect table present but rom_data/dmd_durations.csv missing (knowledge/dmd_animation_durations.md)"] if has else [])
-    fails = []
+    fails, unm = [], 0
     with open(p, newline="", encoding="utf-8", errors="replace") as f:
         r = csv.DictReader(f)
         miss = [c for c in DUR_COLS if c not in (r.fieldnames or [])]
@@ -247,6 +247,11 @@ def check_durations(root):
             g = lambda k: (row.get(k) or "").strip()
             if cl not in DUR_CLASSES:
                 fails.append(f"{who}: class '{cl}' not in {DUR_CLASSES}"); continue
+            if cl == "unmeasured":
+                unm += 1
+                if not g("notes"):
+                    fails.append(f"{who}: unmeasured needs a note (why no state accepts it)")
+                continue
             if g("method") not in DUR_METHODS and cl != "empty":
                 fails.append(f"{who}: method '{g('method')}' must be one of {DUR_METHODS} (no capture-derived duration)")
             if cl == "empty":
@@ -270,7 +275,7 @@ def check_durations(root):
             if cl == "state_dependent":
                 if not (g("min_ticks").isdigit() and g("max_ticks").isdigit()) or not ADDR.search(g("decider_addr")):
                     fails.append(f"{who}: state_dependent needs min_ticks, max_ticks and a cited decider_addr")
-    return fails, []
+    return fails, ([f"dmd: {unm} animation(s) still unmeasured in rom_data/dmd_durations.csv"] if unm else [])
 
 
 def _tick_ms(root, game):

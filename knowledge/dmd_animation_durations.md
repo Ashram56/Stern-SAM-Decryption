@@ -36,7 +36,7 @@ the wait routine). A board with its own firmware (LOTR DMD) cites the timer setu
 |---|---|
 | `game`, `animation_id`, `kind` | `deff` / `object` / `sequence` / `screen` |
 | `entry_addr` | ROM address (`bank:addr`) where the animation starts |
-| `class` | `finite` / `loop` (repeats until stopped) / `held` (last frame held until replaced) / `state_dependent` / `empty` (no animation) |
+| `class` | `finite` / `loop` (repeats until stopped) / `held` (last frame held until replaced) / `state_dependent` / `empty` (no animation) / `unmeasured` (no tested state accepts the effect; `notes` says why; the check counts them as a WARN until none is left) |
 | `ticks`, `ms` | finite: total; `ms = ticks * tick_ms`. loop: duration of **one cycle**. held: ticks before the held frame. state_dependent: leave empty and fill `min_ticks`, `max_ticks` |
 | `min_ticks`, `max_ticks` | range when `class=state_dependent`, else equal to `ticks` |
 | `end_addr` | finite: the call site of the last wait (the code after it returns without waiting), cited |
@@ -45,11 +45,11 @@ the wait routine). A board with its own firmware (LOTR DMD) cites the timer setu
 | `method` | `exec_hooked` (D), `static_path` (A) or `both` (D checked against A) |
 | `elapsed_ticks` (optional) | elapsed time measured on a core with a real interrupt model; must equal `ticks` within the code time between waits (empty on a stubbed scheduler) |
 | `notes` (optional) | child tasks, forced random values, loop arguments |
-| `states_tested`, `state_stable` | number of states run; `yes` / `no` |
+| `states_tested`, `state_stable` | number of states run; `yes` (>= 2 states agree) / `no` / `single` (one state only: not proven stable) |
 | `wait_sites` | space-separated `addr:ticks` list of the waits summed (proof of the number) |
 
 Rules: every row cites addresses; `class=finite` needs `ticks`, `ms`, `end_addr`; `loop`/`held` need `loop_addr`; `state_dependent` needs
-`min_ticks`, `max_ticks`, `decider_addr`; `empty` has `ticks=0`. A `capture`, `pinmame` or `render` value in `method` is a failure.
+`min_ticks`, `max_ticks`, `decider_addr`; `empty` has `ticks=0`. `unmeasured` has no ticks. A `capture`, `pinmame` or `render` value in `method` is a failure.
 No duration without `wait_sites`, except `empty`. The human view of a row is the effect's page in `docs/boards/dmd/`, which links the row.
 
 ## 5. Per platform: what to hook, where the tick comes from

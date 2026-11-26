@@ -76,6 +76,14 @@ class T(unittest.TestCase):
             fails, _ = c.run(d, layout_strict=True)
             self.assertTrue(any(m.startswith("layout:") for m in fails))
 
+    def test_dmd_unmeasured(self):
+        H = "game,animation_id,class,ticks,ms,end_addr,loop_addr,min_ticks,max_ticks,decider_addr,method,wait_sites,notes\n"
+        with tempfile.TemporaryDirectory() as d:
+            mk(d, self.good(**{"rom_data/dmd_durations.csv": H + "g,01,unmeasured,,,,,,,,exec_hooked,,refused everywhere\n"}))
+            fails, warns = c.run(d)
+            self.assertEqual(fails, [])
+            self.assertTrue(any("unmeasured" in w for w in warns))
+
     def test_dmd_durations(self):
         H = "game,animation_id,class,ticks,ms,end_addr,loop_addr,min_ticks,max_ticks,decider_addr,method,wait_sites\n"
         tick = "game,tick_ms\ng,16.4\n"
