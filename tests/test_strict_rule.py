@@ -76,6 +76,18 @@ class T(unittest.TestCase):
             fails, _ = c.run(d, layout_strict=True)
             self.assertTrue(any(m.startswith("layout:") for m in fails))
 
+    def test_dmd_durations(self):
+        H = "game,animation_id,class,ticks,ms,end_addr,loop_addr,min_ticks,max_ticks,decider_addr,method,wait_sites\n"
+        tick = "game,tick_ms\ng,16.4\n"
+        ok = H + "g,01,finite,10,164,33:7448,,10,10,,exec_hooked,33:7430:10\n" + "g,02,empty,0,0,,,,,,,\n"
+        self.assertEqual(self.run_(self.good(**{"rom_data/dmd_durations.csv": ok, "rom_data/dmd_tick.csv": tick})), [])
+        bad = H + "g,01,finite,10,200,33:7448,,10,10,,pinmame,33:7430:10\ng,02,loop,5,82,,,,,,exec_hooked,\n"
+        f = self.run_(self.good(**{"rom_data/dmd_durations.csv": bad, "rom_data/dmd_tick.csv": tick}))
+        self.assertTrue(any("tick_ms" in m for m in f) and any("capture" in m for m in f) and any("loop_addr" in m for m in f))
+        with tempfile.TemporaryDirectory() as d:
+            mk(d, self.good(**{"rom_data/dmd_deffs.csv": "id\n1\n"}))
+            self.assertTrue(any(m.startswith("dmd:") for m in c.run(d)[1]))
+
 
 if __name__ == "__main__":
     unittest.main()
