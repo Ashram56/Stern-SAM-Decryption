@@ -22,15 +22,15 @@ capture is only a control.
 | 12 | **Size of the result** | Frame dumps reach hundreds of MB | Merge identical neighbouring frames, cap per tick, store 16-level greys; check the total before committing (the Tron set: 144 effects and all variants, 35 MB). |
 | 13 | **The test bench** | A rules change can break a mode elsewhere | Run the game's player-robot bench before and after each rules change; it is the regression net the traces cannot be. |
 
-## 2. Global method (decode, then code in MPF, then improve)
+## 2. Global method (decode; the MPF coding and improvements part is in MPF-Godot-Packaging)
 
 1. **Inventory first** (`boards_inventory.md`): every board with its own CPU/ROM, decompile state. A board that is not complete blocks the rules that depend on it.
 2. **Tables from the image**: OS routine names, effect table, coil/lamp/switch descriptors, page tables: read the ROM bytes, never a screenshot.
 3. **Functional diagram from the code**, one ROM address per node, before any MPF code (agent C waits for it).
 4. **Per mode, decode the whole block** (start, values, end, effects, sounds, lamps) with addresses; open points need a code-based reason or are sent back to work.
 5. **Display from code** with the recipes of section 1; the capture is only the control column of the conformance table.
-6. **MPF rules per node**, tests citing the address; run the bench; log every departure in `rom_differences.md`.
-7. **Improvements** (HD, colour, new modes, service menus) are switchable and listed apart; the base game with them off must equal the ROM's. After any improvement, rerun the conformance table with the improvements off.
+6. **MPF rules and improvements** are the MPF half's: `knowledge/recreation_method_for_weaker_agents.md` in Ashram56/MPF-Godot-Packaging (rules per node, bench, switchable improvements). Log every departure in `rom_differences.md`.
+7. **Display conformance**: rerun it against the code frames with improvements off after any change.
 8. **Guard rails**: `check_strict_rule.py` before every push; progress report every 15 minutes; never end a turn announcing a next step while doable work remains.
 
 ## 3. Escalation rule
