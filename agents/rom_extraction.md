@@ -334,7 +334,7 @@ coil end callbacks only happen if their OS code runs, so run it rather than answ
   its position reaches the length word at the head of the sample. Record the calls the FIQ starts apart from the
   game's own (`sound_chain`), or every music loop counts as a game sound.
 - *Flash banks.* The sound code writes the bank register (0x02580000) **directly**, not only through the OS bank
-  routine: hook that write. It switches banks about 2,000 times a tick, so copying 8 MB per switch is far too slow:
+  routine: hook that write. It switches banks over 100,000 times in one scenario, so copying 8 MB per switch is far too slow:
   map the 0x04800000 window as MMIO (a read callback into the ROM image at bank x 0x800000) during the FIQ batch
   only, and as host memory (`mem_map_ptr` on a buffer per bank) otherwise. Never `mem_unmap` inside a Unicorn hook
   (segfault): switch the mapping between calls.
