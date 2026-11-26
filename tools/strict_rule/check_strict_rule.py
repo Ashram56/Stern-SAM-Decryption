@@ -17,6 +17,8 @@ Checks (each failure is printed as FAIL, heuristics as WARN):
      or .aNN / .uNN), unless listed in docs/rom_exceptions.md with "approved by Vincent <date>". Everything else of the standard
      tree (required docs, rom_data/README.md, .gitignore ROM patterns, folder names, traces outside rom_data/) is a WARN;
      `--layout-strict` turns those warnings into failures (use it on a new game repository).
+  6. DMD animation durations (knowledge/dmd_animation_durations.md): rom_data/dmd_durations.csv is validated when present
+     (classes, ticks/ms/tick_ms, cited addresses, no capture method); missing next to a DMD effect table is a WARN `dmd:`.
 """
 import csv, json, os, re, sys
 
@@ -221,11 +223,102 @@ def warnings(root):
     return out
 
 
+DUR_COLS = ("game", "animation_id", "class", "ticks", "ms", "end_addr", "loop_addr", "min_ticks", "max_ticks", "decider_addr", "method", "wait_sites")
+DUR_ADDR = re.compile(r"\b(?:fix|3f|[0-9a-fA-F]{2}):[0-9a-fA-F]{4}\b|0x[0-9a-fA-F]{3,}|\bFUN_[0-9a-fA-F]+")
+DUR_CLASSES = ("finite", "loop", "held", "state_dependent", "empty", "unmeasured")
+DUR_METHODS = ("exec_hooked", "static_path", "both")
+
+
+def check_durations(root):
+    """knowledge/dmd_animation_durations.md: rom_data/dmd_durations.csv, one normalised row per DMD animation."""
+    p = os.path.join(root, "rom_data", "dmd_durations.csv")
+    rd = os.path.join(root, "rom_data")
+    if not os.path.isfile(p):
+        has = os.path.isdir(rd) and any(re.match(r"dmd_(?:.*effects.*|deff.*|animations)\.csv$", n) for n in os.listdir(rd))
+        return [], (["dmd: DMD effect table present but rom_data/dmd_durations.csv missing (knowledge/dmd_animation_durations.md)"] if has else [])
+    fails, unm = [], 0
+    with open(p, newline="", encoding="utf-8", errors="replace") as f:
+        r = csv.DictReader(f)
+        miss = [c for c in DUR_COLS if c not in (r.fieldnames or [])]
+        if miss:
+            return ["rom_data/dmd_durations.csv: missing columns " + ", ".join(miss)], []
+        for n, row in enumerate(r, 2):
+            who = f"dmd_durations.csv line {n} ({row['animation_id']})"
+            cl = (row["class"] or "").strip()
+            g = lambda k: (row.get(k) or "").strip()
+            if cl not in DUR_CLASSES:
+                fails.append(f"{who}: class '{cl}' not in {DUR_CLASSES}"); continue
+            if cl == "unmeasured":
+                unm += 1
+                if not g("notes"):
+                    fails.append(f"{who}: unmeasured needs a note (why no state accepts it)")
+                continue
+            if g("method") not in DUR_METHODS and cl != "empty":
+                fails.append(f"{who}: method '{g('method')}' must be one of {DUR_METHODS} (no capture-derived duration)")
+            if cl == "empty":
+                if g("ticks") not in ("0", ""):
+                    fails.append(f"{who}: empty animation with ticks {g('ticks')}")
+                continue
+            if not g("wait_sites") or not DUR_ADDR.search(g("wait_sites")) and not re.search(r"[0-9a-fA-F]+:\d+", g("wait_sites")):
+                fails.append(f"{who}: wait_sites missing (the waits summed, addr:ticks)")
+            if cl in ("finite", "loop", "held"):
+                try:
+                    t = int(g("ticks"))
+                except ValueError:
+                    fails.append(f"{who}: ticks missing or not numeric"); continue
+                tick = _tick_ms(root, g("game"), g("board"))
+                if g("ms"):                      # ms may stay empty while the base frequency is unknown (dmd_tick.csv tick_ms empty)
+                    try:
+                        ms = float(g("ms"))
+                    except ValueError:
+                        fails.append(f"{who}: ms not numeric"); continue
+                    if tick and abs(ms - t * tick) > 0.5:
+                        fails.append(f"{who}: ms {ms} != ticks {t} * tick_ms {tick}")
+                elif tick:
+                    fails.append(f"{who}: ms empty although tick_ms {tick} is known")
+            if cl == "finite" and not DUR_ADDR.search(g("end_addr")):
+                fails.append(f"{who}: finite without a cited end_addr")
+            if cl in ("loop", "held") and not DUR_ADDR.search(g("loop_addr")):
+                fails.append(f"{who}: {cl} without a cited loop_addr")
+            if cl == "state_dependent":
+                if not (g("min_ticks").isdigit() and g("max_ticks").isdigit()) or not DUR_ADDR.search(g("decider_addr")):
+                    fails.append(f"{who}: state_dependent needs min_ticks, max_ticks and a cited decider_addr")
+    return fails, ([f"dmd: {unm} animation(s) still unmeasured in rom_data/dmd_durations.csv"] if unm else [])
+
+
+def check_tick_sources(root):
+    p = os.path.join(root, "rom_data", "dmd_tick.csv")
+    if not os.path.isfile(p):
+        return []
+    out = []
+    with open(p, newline="", encoding="utf-8", errors="replace") as f:
+        for row in csv.DictReader(f):
+            src = (row.get("base_hz_source") or row.get("irq_hz_source") or "").strip().lower()
+            if not src.startswith(("code", "schematic", "measured")):
+                out.append(f"dmd: tick of {row.get('game', '?')} {row.get('board', '')} rests on an external interrupt frequency ('{src[:30]}'): ms are provisional (cite the code, a schematic or a measurement)")
+    return out
+
+
+def _tick_ms(root, game, board=""):
+    p = os.path.join(root, "rom_data", "dmd_tick.csv")
+    if os.path.isfile(p):
+        with open(p, newline="", encoding="utf-8", errors="replace") as f:
+            for row in csv.DictReader(f):
+                if (not game or row.get("game", "") == game) and (not board or board.lower() in (row.get("board") or "").lower()):
+                    try:
+                        return float(row["tick_ms"])
+                    except (KeyError, ValueError):
+                        return None
+    return None
+
+
 def run(root, layout_strict=False):
     fails = check_rule_text(root) + check_inventory(root) + check_sources(root) + check_diagram(root) + check_roms(root)
     warns = warnings(root) + layout_warnings(root)
+    df, dw = check_durations(root)
+    fails, warns = fails + df, warns + dw + check_tick_sources(root)
     if layout_strict:
-        fails, warns = fails + [w for w in warns if w.startswith("layout:")], [w for w in warns if not w.startswith("layout:")]
+        fails, warns = fails + [w for w in warns if w.startswith(("layout:", "dmd:"))], [w for w in warns if not w.startswith(("layout:", "dmd:"))]
     return fails, warns
 
 

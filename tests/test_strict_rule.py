@@ -76,6 +76,40 @@ class T(unittest.TestCase):
             fails, _ = c.run(d, layout_strict=True)
             self.assertTrue(any(m.startswith("layout:") for m in fails))
 
+    def test_dmd_tick_external_warns(self):
+        with tempfile.TemporaryDirectory() as d:
+            mk(d, self.good(**{"rom_data/dmd_tick.csv": "game,board,base_hz_source,tick_ms\ng,main,external (PinMAME),16.4\n"}))
+            self.assertTrue(any("external" in w for w in c.run(d)[1]))
+            mk(d, {"rom_data/dmd_tick.csv": "game,board,base_hz_source,tick_ms\ng,main,code,16.0\n"})
+            self.assertFalse(any("external" in w for w in c.run(d)[1]))
+
+    def test_dmd_ms_empty_when_tick_unknown(self):
+        H = "game,animation_id,class,ticks,ms,end_addr,loop_addr,min_ticks,max_ticks,decider_addr,method,wait_sites\n"
+        row = H + "g,01,finite,10,,fix:7448,,10,10,,exec_hooked,fix:7430:10\n"
+        self.assertEqual(self.run_(self.good(**{"rom_data/dmd_durations.csv": row, "rom_data/dmd_tick.csv": "game,board,tick_ms\ng,x,\n"})), [])
+        f = self.run_(self.good(**{"rom_data/dmd_durations.csv": row, "rom_data/dmd_tick.csv": "game,board,tick_ms\ng,x,16.4\n"}))
+        self.assertTrue(any("ms empty" in m for m in f))
+
+    def test_dmd_unmeasured(self):
+        H = "game,animation_id,class,ticks,ms,end_addr,loop_addr,min_ticks,max_ticks,decider_addr,method,wait_sites,notes\n"
+        with tempfile.TemporaryDirectory() as d:
+            mk(d, self.good(**{"rom_data/dmd_durations.csv": H + "g,01,unmeasured,,,,,,,,exec_hooked,,refused everywhere\n"}))
+            fails, warns = c.run(d)
+            self.assertEqual(fails, [])
+            self.assertTrue(any("unmeasured" in w for w in warns))
+
+    def test_dmd_durations(self):
+        H = "game,animation_id,class,ticks,ms,end_addr,loop_addr,min_ticks,max_ticks,decider_addr,method,wait_sites\n"
+        tick = "game,tick_ms\ng,16.4\n"
+        ok = H + "g,01,finite,10,164,fix:7448,,10,10,,exec_hooked,33:7430:10\n" + "g,02,empty,0,0,,,,,,,\n"
+        self.assertEqual(self.run_(self.good(**{"rom_data/dmd_durations.csv": ok, "rom_data/dmd_tick.csv": tick})), [])
+        bad = H + "g,01,finite,10,200,33:7448,,10,10,,pinmame,33:7430:10\ng,02,loop,5,82,,,,,,exec_hooked,\n"
+        f = self.run_(self.good(**{"rom_data/dmd_durations.csv": bad, "rom_data/dmd_tick.csv": tick}))
+        self.assertTrue(any("tick_ms" in m for m in f) and any("capture" in m for m in f) and any("loop_addr" in m for m in f))
+        with tempfile.TemporaryDirectory() as d:
+            mk(d, self.good(**{"rom_data/dmd_deffs.csv": "id\n1\n"}))
+            self.assertTrue(any(m.startswith("dmd:") for m in c.run(d)[1]))
+
 
 if __name__ == "__main__":
     unittest.main()
