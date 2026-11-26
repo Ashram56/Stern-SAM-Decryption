@@ -224,6 +224,7 @@ def warnings(root):
 
 
 DUR_COLS = ("game", "animation_id", "class", "ticks", "ms", "end_addr", "loop_addr", "min_ticks", "max_ticks", "decider_addr", "method", "wait_sites")
+DUR_ADDR = re.compile(r"\b(?:fix|3f|[0-9a-fA-F]{2}):[0-9a-fA-F]{4}\b|0x[0-9a-fA-F]{3,}|\bFUN_[0-9a-fA-F]+")
 DUR_CLASSES = ("finite", "loop", "held", "state_dependent", "empty", "unmeasured")
 DUR_METHODS = ("exec_hooked", "static_path", "both")
 
@@ -258,7 +259,7 @@ def check_durations(root):
                 if g("ticks") not in ("0", ""):
                     fails.append(f"{who}: empty animation with ticks {g('ticks')}")
                 continue
-            if not g("wait_sites") or not ADDR.search(g("wait_sites")) and not re.search(r"[0-9a-fA-F]+:\d+", g("wait_sites")):
+            if not g("wait_sites") or not DUR_ADDR.search(g("wait_sites")) and not re.search(r"[0-9a-fA-F]+:\d+", g("wait_sites")):
                 fails.append(f"{who}: wait_sites missing (the waits summed, addr:ticks)")
             if cl in ("finite", "loop", "held"):
                 try:
@@ -268,12 +269,12 @@ def check_durations(root):
                 tick = _tick_ms(root, g("game"))
                 if tick and abs(ms - t * tick) > 0.5:
                     fails.append(f"{who}: ms {ms} != ticks {t} * tick_ms {tick}")
-            if cl == "finite" and not ADDR.search(g("end_addr")):
+            if cl == "finite" and not DUR_ADDR.search(g("end_addr")):
                 fails.append(f"{who}: finite without a cited end_addr")
-            if cl in ("loop", "held") and not ADDR.search(g("loop_addr")):
+            if cl in ("loop", "held") and not DUR_ADDR.search(g("loop_addr")):
                 fails.append(f"{who}: {cl} without a cited loop_addr")
             if cl == "state_dependent":
-                if not (g("min_ticks").isdigit() and g("max_ticks").isdigit()) or not ADDR.search(g("decider_addr")):
+                if not (g("min_ticks").isdigit() and g("max_ticks").isdigit()) or not DUR_ADDR.search(g("decider_addr")):
                     fails.append(f"{who}: state_dependent needs min_ticks, max_ticks and a cited decider_addr")
     return fails, ([f"dmd: {unm} animation(s) still unmeasured in rom_data/dmd_durations.csv"] if unm else [])
 
