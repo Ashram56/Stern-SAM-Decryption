@@ -367,6 +367,21 @@ so whether a lamp effect outlives the bonus is in that table, not in the rule.
 divides by 64: 16.0 ms). Every task-wait loop (task sleep, display waits) inlines the same check, so it can skip
 ticks but never runs faster: a counter it decrements is in 16 ms units.
 
+**Rule records run on request, effects lower their own priority, and the service menu can be walked in code.**
+Three facts the recreation needs and that a capture hides (Transformers, 2026-11-26):
+- The rule records (background deffs, rule leffs) are not evaluated every tick. A request routine sets one
+  RAM flag (Transformers: set_dat_000315fc [0x00017650]), and the per-tick routine walks the record lists
+  once when the flag is set (0x00017664). Some 60 routines request it (deff starts, timers, event hooks).
+  A RAM poke in a scenario makes no request. A rule leff refused because a stronger leff holds the
+  outputs starts at that leff's end, with the walk's caller as its caller.
+- Many deffs lower their own priority (Transformers: to 32) near their end, through the deff priority
+  sleep. From that tick the waiting effect or the score deff takes the DMD, while the deff's task (and the
+  leff it stops on exit) runs on. Package the change with its tick (`priority_changes`), not only the
+  run's end.
+- The service menu: run the ROM in the scenario runner, press the coin-door buttons, and record the
+  texts each screen draws. A walk with PLUS until the first item repeats, then SELECT and BACK, gives the
+  whole visible tree in code; resync after BACK, since a help screen can go up two levels.
+
 ### 3.4 Pinball Asset Decryptor: first look and independent cross-check
 [davidvanderburgh/pinball-asset-decryptor](https://github.com/davidvanderburgh/pinball-asset-decryptor)
 (MIT, desktop app for Windows, macOS and Linux, releases page; or run from source) reads a SAM code update
