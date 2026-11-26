@@ -30,6 +30,18 @@ class T(unittest.TestCase):
         f = self.good(**{"docs/boards_inventory.md": INV % ("complet", "partiel")})
         self.assertTrue(any("Sound" in m for m in self.run_(f)))
 
+    def test_board_exception_passes_only_when_absent_and_approved(self):
+        exc = "| Board | State | Exception | Approval |\n|---|---|---|---|\n| `Sound` | absent | no firmware, no game logic (code evidence) | approved by Vincent 2026-11-26 |\n"
+        inv_absent = {"docs/boards_inventory.md": INV % ("complet", "absent")}
+        self.assertTrue(any("Sound" in m for m in self.run_(self.good(**inv_absent))))                       # absent, no exception: fails
+        self.assertEqual(self.run_(self.good(**inv_absent, **{"docs/board_exceptions.md": exc})), [])       # absent + approved exception: passes
+        inv_partial = {"docs/boards_inventory.md": INV % ("complet", "partiel")}
+        self.assertTrue(any("Sound" in m for m in self.run_(self.good(**inv_partial, **{"docs/board_exceptions.md": exc}))))  # partiel is never excused
+        noappr = exc.replace("approved by Vincent 2026-11-26", "to be approved")
+        self.assertTrue(any("Sound" in m for m in self.run_(self.good(**inv_absent, **{"docs/board_exceptions.md": noappr}))))  # no approval line: fails
+        other = exc.replace("`Sound`", "`Display`")
+        self.assertTrue(any("Sound" in m for m in self.run_(self.good(**inv_absent, **{"docs/board_exceptions.md": other}))))  # other board named: fails
+
     def test_missing_inventory_and_rule(self):
         self.assertEqual(len(self.run_({"x.txt": "1"})), 4)
 

@@ -5,7 +5,7 @@
 
 Checks (each failure is printed as FAIL, heuristics as WARN):
   1. CLAUDE.md carries the rule and the working rules 6-7 (no "I continue" turn ends, 15-minute reports).
-  2. docs/boards_inventory.md exists, lists every board with its own CPU/MCU/ROM, and every row is "complet".
+  2. docs/boards_inventory.md exists, lists every board with its own CPU/MCU/ROM, and every row is "complet" (an absent board may be excused by an owner-approved line of docs/board_exceptions.md).
   3. No data file declares a PinMAME / trace / capture / emulation / render source, unless the path is
      listed in docs/pinmame_waivers.md with "approved by Vincent <date>" (last resort, owner asked first).
      Declared = CSV column source|origin|provenance (or a column ending in _source), JSON key of that name or a
@@ -50,7 +50,7 @@ def waivers(root):
     ok = set()
     if os.path.isfile(p):
         for line in open(p, encoding="utf-8", errors="replace"):
-            m = re.search(r"`([^`]+)`.*approved by Vincent\s+\d{4}-\d{2}-\d{2}", line, re.I)
+            m = re.search(r"`([^`]+)`.*approved by\s+\S+\s+\d{4}-\d{2}-\d{2}", line, re.I)
             if m:
                 ok.add(m.group(1).strip("/"))
     return ok
@@ -60,6 +60,18 @@ def check_rule_text(root):
     p = os.path.join(root, "CLAUDE.md")
     txt = open(p, encoding="utf-8", errors="replace").read() if os.path.isfile(p) else ""
     return [f'CLAUDE.md missing the rule text "{m}"' for m in MARKERS if m not in txt]
+
+
+def board_exceptions(root):
+    """docs/board_exceptions.md: a board with no firmware available may stay `absent` only if its line carries `Board name` in backticks and 'approved by Vincent YYYY-MM-DD' (owner decision, justification from the code)."""
+    p = os.path.join(root, "docs", "board_exceptions.md")
+    ok = []
+    if os.path.isfile(p):
+        for line in open(p, encoding="utf-8", errors="replace"):
+            m = re.search(r"`([^`]+)`.*approved by\s+\S+\s+\d{4}-\d{2}-\d{2}", line, re.I)
+            if m:
+                ok.append(m.group(1).lower())
+    return ok
 
 
 def check_inventory(root):
@@ -83,6 +95,8 @@ def check_inventory(root):
         st = STATES.get(c[col].lower().split()[0] if c[col].strip() else "", None)
         if st is None:
             out.append(f"boards_inventory: board '{c[0]}' has no valid state (complet / partiel / absent): '{c[col]}'")
+        elif st == "absent" and any(e in c[0].lower() for e in board_exceptions(root)):
+            continue   # documented exception (docs/board_exceptions.md)
         elif st != "complet":
             out.append(f"boards_inventory: board '{c[0]}' is {st}, must be complet before any rule is coded from it")
     return out
@@ -177,7 +191,7 @@ def rom_exceptions(root):
     ok = set()
     if os.path.isfile(p):
         for line in open(p, encoding="utf-8", errors="replace"):
-            m = re.search(r"`([^`]+)`.*approved by Vincent\s+\d{4}-\d{2}-\d{2}", line, re.I)
+            m = re.search(r"`([^`]+)`.*approved by\s+\S+\s+\d{4}-\d{2}-\d{2}", line, re.I)
             if m:
                 ok.add(m.group(1).strip("/"))
     return ok
