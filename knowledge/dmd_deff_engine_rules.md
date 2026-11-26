@@ -55,6 +55,16 @@ Mostly yes. Tron already extracts part of it: `rom_layout.py` parses the decompi
 
 Output location: the generated op lists belong in the game's asset repo (they are ROM-derived, never in this public repo); the extractor and the schema belong here (`tools/rom/`).
 
+### Status: step 2 realised (Transformers tf_180, 2026-11-25)
+
+Step 2 came first and does most of step 1: running each deff function as ROM code in Unicorn with the OS calls
+answered in Python gives the op list directly (`rom/tools/deff_lift.py` in Transformers-MPF, method in
+rom_extraction.md section 3.3), with real ticks and the call site of every op; the renderer re-implements each
+primitive from its routine. Result: 117 of 153 deffs generated with no override; 84 of them reproduce every frame of
+the earlier emulator capture. Still open: effects whose frames depend on game state or on task arguments set by
+the caller after `deff_start` (stores at task+0x30...; a static scan of the callers lists them), the high-score
+entry (pointer arguments) and a few OS routines that write the DMD page directly.
+
 ## 5. Open questions
 
 - Is the tick length and status panel identical in all SAM games? Only Tron was measured.
