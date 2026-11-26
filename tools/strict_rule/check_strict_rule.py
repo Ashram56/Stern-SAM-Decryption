@@ -278,6 +278,19 @@ def check_durations(root):
     return fails, ([f"dmd: {unm} animation(s) still unmeasured in rom_data/dmd_durations.csv"] if unm else [])
 
 
+def check_tick_sources(root):
+    p = os.path.join(root, "rom_data", "dmd_tick.csv")
+    if not os.path.isfile(p):
+        return []
+    out = []
+    with open(p, newline="", encoding="utf-8", errors="replace") as f:
+        for row in csv.DictReader(f):
+            src = (row.get("base_hz_source") or row.get("irq_hz_source") or "").strip().lower()
+            if not src.startswith(("code", "schematic", "measured")):
+                out.append(f"dmd: tick of {row.get('game', '?')} {row.get('board', '')} rests on an external interrupt frequency ('{src[:30]}'): ms are provisional (cite the code, a schematic or a measurement)")
+    return out
+
+
 def _tick_ms(root, game):
     p = os.path.join(root, "rom_data", "dmd_tick.csv")
     if os.path.isfile(p):
@@ -295,7 +308,7 @@ def run(root, layout_strict=False):
     fails = check_rule_text(root) + check_inventory(root) + check_sources(root) + check_diagram(root) + check_roms(root)
     warns = warnings(root) + layout_warnings(root)
     df, dw = check_durations(root)
-    fails, warns = fails + df, warns + dw
+    fails, warns = fails + df, warns + dw + check_tick_sources(root)
     if layout_strict:
         fails, warns = fails + [w for w in warns if w.startswith(("layout:", "dmd:"))], [w for w in warns if not w.startswith(("layout:", "dmd:"))]
     return fails, warns

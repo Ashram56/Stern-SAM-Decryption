@@ -76,6 +76,13 @@ class T(unittest.TestCase):
             fails, _ = c.run(d, layout_strict=True)
             self.assertTrue(any(m.startswith("layout:") for m in fails))
 
+    def test_dmd_tick_external_warns(self):
+        with tempfile.TemporaryDirectory() as d:
+            mk(d, self.good(**{"rom_data/dmd_tick.csv": "game,board,base_hz_source,tick_ms\ng,main,external (PinMAME),16.4\n"}))
+            self.assertTrue(any("external" in w for w in c.run(d)[1]))
+            mk(d, {"rom_data/dmd_tick.csv": "game,board,base_hz_source,tick_ms\ng,main,code,16.0\n"})
+            self.assertFalse(any("external" in w for w in c.run(d)[1]))
+
     def test_dmd_unmeasured(self):
         H = "game,animation_id,class,ticks,ms,end_addr,loop_addr,min_ticks,max_ticks,decider_addr,method,wait_sites,notes\n"
         with tempfile.TemporaryDirectory() as d:

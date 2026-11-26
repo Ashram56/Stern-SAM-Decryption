@@ -24,11 +24,25 @@ column); if the sums agree the animation is `state_stable=yes`; if not, report `
 (address). A static path sum (A) must equal a logged run on the same path; a difference is a defect of one of the two, not a rounding.
 Frame times of rendered GIFs follow from the same ticks, never the reverse.
 
-## 2. The tick
+## 2. The tick: what the code gives, what it does not
 
-One row per game (`rom_data/dmd_tick.csv`: game, tick_source, irq_hz, irq_per_tick, tick_ms, address of the divider, address of the wait routine).
-Convert `ms = ticks * tick_ms`; keep `tick_ms` to 3 decimals. Example (T2, WPC): 16 IRQ per tick, tick = 16.4 ms (cite the divider and
-the wait routine). A board with its own firmware (LOTR DMD) cites the timer setup of that firmware, not the main CPU's.
+Ticks are exact (they are what the code counts). **Milliseconds depend on the interrupt frequency, and that frequency is often not in the ROM**:
+the ROM divides it (code, citable) but the hardware produces it. `rom_data/dmd_tick.csv` (one row per game and per board that counts its own
+ticks) therefore keeps the two apart:
+
+`game, board, tick_source, divider (IRQ/FIRQ per tick), divider_addr, counter_addr, wait_routine, base_hz, base_hz_source, tick_ms`
+
+`base_hz_source` is one of `code` (the ROM programs the timer: SAM, TC0 RC register), `schematic` (a manufacturer document, cited),
+`measured` (logic analyser on the real board, file cited), `external` (emulator or community figure: **allowed only as a flagged
+placeholder**, the check prints a WARN until it is replaced). Never convert with a PinMAME-measured period.
+
+Status of the games (2026-11-26):
+- **SAM**: `code`. 64 IO ticks of 250 us (TC0, RC=5000), OS tick = 64 of them = 16.000 ms (the MCK value that turns RC into 250 us is a crystal/PLL setting also read in the code).
+- **WPC (T2, MM)**: divider 16 IRQ per tick is `code` (T2 `fix:d9c0..d9ce`; MM `3f:da81`, `da89-da90`, `da99`, both with the same `incb / andb #15` and `inc $50`). The IRQ frequency (976.5625 Hz = 2 MHz / 2048) is `external` until a WPC schematic or a measurement is cited; tick = 16.384 ms on that assumption.
+- **LOTR main board (Whitestar, `lotrcpua.a00`)**: the work is done by the **FIRQ** `0xa7c2` (the IRQ `0xa7c1` is `rti`). Divider: `$c2` counts FIRQ modulo 16 (`0xac41-0xac46`), `$c3` is the tick (`0xac4d`); `$17` counts to 10 for the sub-unit `$0265` (`0xac80-0xac86`). FIRQ frequency: `external` (976 Hz quoted from PinMAME; no timer is programmed by the ROM, the board hardware raises it).
+- **LOTR DMD board (`lotrdspa.a00`)**: its own tick is **one FIRQ**: `inc $01` at `0x812e` in the FIRQ handler `0x810e`, which also flips the display page (`$3000/$3001`). Tasks sleep in those frames (`0x81ea`, the `delay` of a script frame, `0x819b` compares with `$01`). The FIRQ is the DMD controller's refresh interrupt, acknowledged by a read of `$3000`; its frequency is not in the ROM: `external` until a schematic or a measurement is cited.
+
+Convert `ms = ticks * tick_ms`; keep `tick_ms` to 3 decimals; where `base_hz_source=external` the `ms` column of `dmd_durations.csv` is provisional and says so in `notes`.
 
 ## 3. The file: `rom_data/dmd_durations.csv` (one row per animation, every animation of the game)
 
