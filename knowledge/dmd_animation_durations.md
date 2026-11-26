@@ -44,6 +44,18 @@ Status of the games (2026-11-26):
 
 Convert `ms = ticks * tick_ms`; keep `tick_ms` to 3 decimals; leave `tick_ms` and `ms` **empty** while the base frequency is unknown (ticks stay exact; the check accepts an empty `ms` only then); where `base_hz_source=external` the `ms` column of `dmd_durations.csv` is provisional and says so in `notes`.
 
+### Drift under load: what the wake-up code says
+
+`ticks` is the time the code **asks** for; the elapsed time of an effect is that plus the lateness of each wake-up. Two facts to read per game, from the scheduler code, and to put in `notes` of `dmd_tick.csv`:
+1. **Is the time base counted by the interrupt or by the loop?** If an interrupt increments the counter, no tick is lost by a busy loop (only by masked interrupts); if the loop counts passes, load stretches every tick.
+2. **Is the wake-up time absolute (counter value) or relative (passes)?** A task sleeps until `counter >= wake`; when its turn comes late it runs late, and its next sleep starts from the late moment, so the lateness of each wake adds up along a chain of waits. It is never early.
+Bound of one lateness = the duration of one pass of the task list. The ROM does not give it; only a measurement of the real board (time of the same effect on the machine, or the scheduler pass on a logic analyser) can. Until then the `ms` of an effect are a lower bound with the added lateness unknown. Do not quote a figure of "x ms in game" without its measurement file.
+
+Per game (code):
+- **WPC-95 (MM)**: the counter `$4f:$50` is incremented by the IRQ (`3f:da99`, after the `/16` at `da89-da90`; no tick is lost by a busy loop). The wake time is absolute: `3f:98de` stores `$4f + B` at `+15` of the task, the scheduler pass `3f:97d5-97de` runs a task when `$4f - wake >= 0` (`ldd $4f / subd 15,u / bmi`). The main loop `3f:9786-978c` starts one pass per tick change (`$50` against `$51`): if a pass lasts longer than a tick, the next pass starts at once with the current counter and the missed ticks are not replayed, so lateness is not caught up on the following sleep.
+- Other platforms: fill in the same two facts when the durations file is made (SAM: OS counter `0x37364`, main loop `0x3405c`).
+
+
 ## 3. The file: `rom_data/dmd_durations.csv` (one row per animation, every animation of the game)
 
 | Column | Meaning |
