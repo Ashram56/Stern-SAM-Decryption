@@ -65,6 +65,16 @@ the earlier emulator capture. Still open: effects whose frames depend on game st
 the caller after `deff_start` (stores at task+0x30...; a static scan of the callers lists them), the high-score
 entry (pointer arguments) and a few OS routines that write the DMD page directly.
 
+**Hand the op lists over whole, with what the renderer reads from the ROM** (code, Transformers tf_180, 2026-11-26).
+Agent C replays the op lists live (the deffs that move or fade a printf must take the game's values), so it needs
+everything the offline renderer reads from the ROM. There are two traps:
+- **An image PNG export is lossy for the mask.** A dot byte is a shade (low nibble) and a mask (high nibble, the show
+  mixer: `dot = (bg & (fg >> 4)) | (fg & ~(fg >> 4))`). A PNG with grey = shade and alpha 0 = 0xff turns every
+  other mask byte (0x10-0xfe) into level 15. On tf_180 that is 264 of 10,212 images. Export their raw bytes as well
+  (Transformers-MPF `rom/tools/export_op_data.py`: `rom_images_mask.zip`, u16 w, u16 h, w*h bytes).
+- **ROM tables named by an op.** The dissolve [0x01034758] names its 80-byte table by address (0x040c76e8 on tf_180).
+  Export each named table's bytes (`dissolve_tables.json`), because the game has no ROM.
+
 ## 5. Open questions
 
 - Is the tick length and status panel identical in all SAM games? Only Tron was measured.
