@@ -526,6 +526,8 @@ calls carry over.
 
 ### 5.1 Core OS functions (Tron addresses) and how to find each
 
+**First, apply the signature database** ([knowledge/sam_os_signatures.md](../knowledge/sam_os_signatures.md)): it proposes the OS names of a new ROM from Tron LE/Pro and Transformers (157 names on Star Trek LE 1.61 in seconds), read-check them against the new decompile, then find only what it misses with the list below. Add the new game to the database afterwards.
+
 | Function | Tron | How to find it in another ROM |
 |---|---|---|
 | `task_sleep(ticks)` | `0xb91c` | The most-called function; called in loops by every effect. Breakpoint on any running animation and look at the call it makes once per frame. |
