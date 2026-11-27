@@ -12,7 +12,8 @@ agent itself: [../agents/rom_extraction.md](../agents/rom_extraction.md).
 | File | Read it when | Size |
 |---|---|---|
 | [sam_hardware/](sam_hardware/README.md) | You need the SAM CPU to IO board bus, its timing, the lamp matrix, or any interface the CPU board drives (DMD, sound, switches, timers): same boards on every SAM game, measured with the Tron ROM. CSVs beside it. | ~15 min |
-| [sam_os_api.json](sam_os_api.json) | You name OS functions in a new ROM's decompile: 160 SAM OS functions with signatures, meaning and evidence (Tron LE 1.74 addresses; find each again with the ROM extraction agent's section 5.1). | grep it |
+| [sam_os_api.json](sam_os_api.json) | You name OS functions in a new ROM's decompile: 160 SAM OS functions with signatures, meaning and evidence (Tron LE 1.74 addresses; for another ROM use [sam_os_signatures.md](sam_os_signatures.md) first, then section 5.1 for what it misses). | grep it |
+| [sam_os_signatures.md](sam_os_signatures.md) | You name the OS functions of a new SAM ROM: address-independent signatures (decompile structure + masked byte hashes) built from Tron LE/Pro and Transformers, the apply command, measured coverage, how to add a game. Tools in `tools/rom/sam_os_sigs/`. | ~4 min |
 | [dmd_deff_engine_rules.md](dmd_deff_engine_rules.md) | You read the SAM display-effect engine from the ROM (what is the engine, what is the game) instead of fitting it to captures. | ~4 min |
 | [wpc_6809.md](wpc_6809.md) | You apply the method to a 6809 game (Williams WPC; Whitestar similar): memory map, far calls and inline-argument wrappers, the OS registry, emulator gotchas, effect and sound injection. Measured on Terminator 2 L-8. | ~5 min |
 | [ghidra_6809_fix.md](ghidra_6809_fix.md) | Ghidra stops with `Overlapping input varnodes` on 6809 functions (WPC, Whitestar): cause (`PULS ...,PC` is a `goto` in the SLEIGH spec), the fix and its installer, the bench that finds such causes without the ROM. | ~3 min |
